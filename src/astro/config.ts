@@ -1,5 +1,5 @@
-export const AU_BREAKS = [0.0, 0.01, 2.0, 4.0, 11.0, 40.0] as const
-export const R_BREAKS = [0.0, 1.2, 6.0, 8.0, 11.0, 14.0] as const
+export const AU_BREAKS = [0.0, 0.0035, 2.0, 4.0, 11.0, 40.0] as const
+export const R_BREAKS = [0.0, 1.8, 6.0, 8.0, 11.0, 14.0] as const
 
 export const CHART_OUTER_RADIUS = R_BREAKS[R_BREAKS.length - 1]
 

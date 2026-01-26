@@ -13,9 +13,8 @@ export function EclipticPlane() {
         <circleGeometry args={[CHART_OUTER_RADIUS, 128]} />
         <meshBasicMaterial
           color={palette.planeFill}
-          transparent
-          opacity={theme === 'dark' ? 0.92 : 0.96}
           side={DoubleSide}
+          depthWrite={false}
         />
       </mesh>
       <mesh position={[0, 0, 0.002]} renderOrder={1}>
@@ -25,6 +24,7 @@ export function EclipticPlane() {
           transparent
           opacity={theme === 'dark' ? 0.9 : 0.8}
           side={DoubleSide}
+          depthWrite={false}
         />
       </mesh>
     </group>

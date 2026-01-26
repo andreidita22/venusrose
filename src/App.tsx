@@ -3,10 +3,13 @@ import { SceneRoot } from './scene/SceneRoot'
 import { ControlBar } from './ui/ControlBar'
 import { useEffect } from 'react'
 import { useAppStore } from './state/store'
+import { usePlayback } from './ui/usePlayback'
 
 function App() {
   const theme = useAppStore((s) => s.theme)
   const setTheme = useAppStore((s) => s.setTheme)
+
+  usePlayback()
 
   useEffect(() => {
     const saved = window.localStorage.getItem('venusrose.theme')

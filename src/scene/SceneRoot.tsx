@@ -8,7 +8,11 @@ import { MAX_TILT_DEG } from '../astro/config'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 import { EclipticPlane } from './EclipticPlane'
+import { DistanceBands } from './DistanceBands'
+import { MoonExtras } from './MoonExtras'
 import { PlanetTokens } from './PlanetTokens'
+import { SynodicArc } from './SynodicArc'
+import { Trails } from './Trails'
 import { ZodiacWedges } from './ZodiacWedges'
 import { ZoneRings } from './ZoneRings'
 
@@ -63,6 +67,10 @@ export function SceneRoot() {
         <EclipticPlane />
         {toggles.showZodiac ? <ZodiacWedges /> : null}
         {toggles.showZoneRings ? <ZoneRings /> : null}
+        <DistanceBands />
+        <SynodicArc />
+        <MoonExtras />
+        <Trails />
         <PlanetTokens />
       </group>
 

@@ -1,12 +1,48 @@
-import { useAppStore } from '../state/store'
+import { useMemo, useRef, useState } from 'react'
 import { BODY_META } from '../astro/bodies'
+import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
+import type { TimeStep } from '../state/store'
+import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
+import { SynodicDial } from './SynodicDial'
+
+const MS_PER_HOUR = 60 * 60 * 1000
+
+function formatStep(step: TimeStep): string {
+  if (step % 24 === 0) {
+    const days = step / 24
+    if (days === 30) return '1mo'
+    return `${days}d`
+  }
+  return `${step}h`
+}
+
+function scrubRangeStepsForStep(step: TimeStep): number {
+  if (step === 1) return 48 // ±2 days
+  if (step === 6) return 56 // ±14 days
+  if (step === 24) return 90 // ±90 days
+  if (step === 168) return 52 // ±52 weeks
+  return 24 // ±24 months
+}
+
+function formatOffset(step: TimeStep, steps: number): string {
+  const hours = steps * step
+  if (hours === 0) return '0'
+
+  const sign = hours > 0 ? '+' : '−'
+  const absHours = Math.abs(hours)
+  const hoursPerMonth = 24 * 30
+  if (absHours % hoursPerMonth === 0) return `${sign}${absHours / hoursPerMonth}mo`
+  if (absHours % 24 === 0) return `${sign}${absHours / 24}d`
+  return `${sign}${absHours}h`
+}
 
 export function ControlBar() {
   const t0 = useAppStore((s) => s.t0)
   const setT0 = useAppStore((s) => s.setT0)
+  const advanceTimeByHours = useAppStore((s) => s.advanceTimeByHours)
   const tiltDeg = useAppStore((s) => s.tiltDeg)
   const setTiltDeg = useAppStore((s) => s.setTiltDeg)
   const toggles = useAppStore((s) => s.toggles)
@@ -16,9 +52,32 @@ export function ControlBar() {
   const bodyStates = useAppStore((s) => s.bodyStates)
   const theme = useAppStore((s) => s.theme)
   const toggleTheme = useAppStore((s) => s.toggleTheme)
+  const isPlaying = useAppStore((s) => s.isPlaying)
+  const setIsPlaying = useAppStore((s) => s.setIsPlaying)
+  const togglePlaying = useAppStore((s) => s.togglePlaying)
+  const timeStep = useAppStore((s) => s.timeStep)
+  const setTimeStep = useAppStore((s) => s.setTimeStep)
+  const showMoonExtras = useAppStore((s) => s.showMoonExtras)
+  const setShowMoonExtras = useAppStore((s) => s.setShowMoonExtras)
+  const showDistanceBands = useAppStore((s) => s.showDistanceBands)
+  const setShowDistanceBands = useAppStore((s) => s.setShowDistanceBands)
+  const showSynodic = useAppStore((s) => s.showSynodic)
+  const setShowSynodic = useAppStore((s) => s.setShowSynodic)
+  const showTrails = useAppStore((s) => s.showTrails)
+  const setShowTrails = useAppStore((s) => s.setShowTrails)
+  const trailMode = useAppStore((s) => s.trailMode)
+  const setTrailMode = useAppStore((s) => s.setTrailMode)
 
   const selectedState = selectedBody ? bodyStates[selectedBody] : null
   const selectedMeta = selectedBody ? BODY_META[selectedBody] : null
+  const selectedRange = selectedBody ? DISTANCE_RANGE_AU[selectedBody] : undefined
+  const closeness = selectedRange && selectedState ? distanceCloseness(selectedRange, selectedState.distAu) : null
+  const sunState = bodyStates.sun
+
+  const [scrubSteps, setScrubSteps] = useState(0)
+  const scrubAnchorMsRef = useRef<number | null>(null)
+
+  const scrubMax = useMemo(() => scrubRangeStepsForStep(timeStep), [timeStep])
 
   return (
     <div className="controlBar">
@@ -30,14 +89,70 @@ export function ControlBar() {
             type="datetime-local"
             value={formatUTCDateTimeLocal(t0)}
             onChange={(e) => {
+              setIsPlaying(false)
               const next = parseUTCDateTimeLocal(e.target.value)
               if (next) setT0(next)
             }}
           />
         </label>
-        <button type="button" className="controlButton" onClick={() => setT0(new Date())}>
+        <button
+          type="button"
+          className="controlButton"
+          onClick={() => {
+            setIsPlaying(false)
+            setT0(new Date())
+          }}
+        >
           Now
         </button>
+        <button
+          type="button"
+          className="controlButton"
+          onClick={() => {
+            setIsPlaying(false)
+            advanceTimeByHours(-timeStep)
+          }}
+        >
+          −{formatStep(timeStep)}
+        </button>
+        <button
+          type="button"
+          className="controlButton primary"
+          onClick={() => togglePlaying()}
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button
+          type="button"
+          className="controlButton"
+          onClick={() => {
+            setIsPlaying(false)
+            advanceTimeByHours(timeStep)
+          }}
+        >
+          +{formatStep(timeStep)}
+        </button>
+
+        <label className="controlLabel">
+          Speed
+          <select
+            className="controlSelect"
+            value={timeStep}
+            onChange={(e) => {
+              const next = Number(e.target.value) as TimeStep
+              setTimeStep(next)
+              setScrubSteps(0)
+              scrubAnchorMsRef.current = null
+            }}
+          >
+            <option value={1}>1h/s</option>
+            <option value={6}>6h/s</option>
+            <option value={24}>1d/s</option>
+            <option value={168}>7d/s</option>
+            <option value={720}>1mo/s</option>
+          </select>
+        </label>
+
         <div className="spacer" />
         <label className="controlLabel">
           Tilt {Math.round(tiltDeg)}°
@@ -53,6 +168,41 @@ export function ControlBar() {
         </label>
       </div>
 
+      <div className="controlRow scrubRow">
+        <label className="controlLabel">
+          Scrub {formatOffset(timeStep, scrubSteps)}
+          <input
+            className="controlRange scrubRange"
+            type="range"
+            min={-scrubMax}
+            max={scrubMax}
+            step={1}
+            value={scrubSteps}
+            onPointerDown={() => {
+              setIsPlaying(false)
+              scrubAnchorMsRef.current = t0.getTime()
+            }}
+            onPointerUp={() => {
+              scrubAnchorMsRef.current = null
+              setScrubSteps(0)
+            }}
+            onPointerCancel={() => {
+              scrubAnchorMsRef.current = null
+              setScrubSteps(0)
+            }}
+            onChange={(e) => {
+              setIsPlaying(false)
+              const nextSteps = Number(e.target.value)
+              setScrubSteps(nextSteps)
+
+              if (scrubAnchorMsRef.current === null) scrubAnchorMsRef.current = t0.getTime()
+              const next = scrubAnchorMsRef.current + nextSteps * timeStep * MS_PER_HOUR
+              setT0(new Date(next))
+            }}
+          />
+        </label>
+      </div>
+
       <div className="controlRow">
         <label className="controlToggle">
           <input
@@ -61,6 +211,47 @@ export function ControlBar() {
             onChange={() => toggleTheme()}
           />
           Light theme
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={showTrails}
+            onChange={(e) => setShowTrails(e.target.checked)}
+          />
+          Trails
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={showMoonExtras}
+            onChange={(e) => setShowMoonExtras(e.target.checked)}
+          />
+          Moon nodes
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={showDistanceBands}
+            onChange={(e) => setShowDistanceBands(e.target.checked)}
+          />
+          Distance band
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={showSynodic}
+            onChange={(e) => setShowSynodic(e.target.checked)}
+          />
+          Synodic
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={trailMode === '3d'}
+            disabled={!showTrails}
+            onChange={(e) => setTrailMode(e.target.checked ? '3d' : 'wheel')}
+          />
+          3D trail
         </label>
         <label className="controlToggle">
           <input
@@ -84,11 +275,35 @@ export function ControlBar() {
             <span className="selectedGlyph">{selectedMeta.glyph}</span>
             <span className="selectedLabel">{selectedMeta.label}</span>
             {selectedState ? (
-              <span className="selectedStats">
-                {formatZodiacPosition(selectedState.lonRad)} · β{' '}
-                {formatSignedDegrees(radToDeg(selectedState.latRad), 1)} · r{' '}
-                {selectedState.distAu.toFixed(4)} AU
-              </span>
+              <>
+                <span className="selectedStats">
+                  {formatZodiacPosition(selectedState.lonRad)} · β{' '}
+                  {formatSignedDegrees(radToDeg(selectedState.latRad), 1)} · r{' '}
+                  {selectedState.distAu.toFixed(4)} AU
+                </span>
+                {closeness !== null && selectedMeta && selectedRange ? (
+                  <span className="distanceStats">
+                    <span className="distanceStatsLabel">
+                      Close {Math.round(closeness * 100)}%
+                    </span>
+                    <span className="distanceGauge" aria-hidden>
+                      <span
+                        className="distanceGaugeFill"
+                        style={{
+                          width: `${Math.round(closeness * 100)}%`,
+                          background: selectedMeta.color,
+                        }}
+                      />
+                    </span>
+                    <span className="distanceStatsRange">
+                      {selectedRange.minAu.toFixed(2)}–{selectedRange.maxAu.toFixed(2)} AU
+                    </span>
+                  </span>
+                ) : null}
+                {showSynodic && selectedBody !== 'sun' && sunState ? (
+                  <SynodicDial body={selectedBody} bodyState={selectedState} sunState={sunState} t0={t0} theme={theme} />
+                ) : null}
+              </>
             ) : (
               <span className="selectedStats">…</span>
             )}
