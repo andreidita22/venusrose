@@ -1,9 +1,7 @@
 import type { BodyId } from '../config'
 import type { EphemerisProvider } from '../ephemeris/types'
 import type { BodyState } from '../ephemeris/types'
-
-const MS_PER_HOUR = 60 * 60 * 1000
-const MS_PER_DAY = 24 * MS_PER_HOUR
+import { MS_PER_DAY, MS_PER_HOUR } from '../math/time'
 
 export function makeSampleTimes(t0: Date, windowDays: number, stepHours: number): Date[] {
   const stepMs = stepHours * MS_PER_HOUR
@@ -32,4 +30,3 @@ export function sampleBodyStates(
   }
   return out
 }
-

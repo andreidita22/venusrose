@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { BodyId } from '../astro/config'
 import type { BodyState } from '../astro/ephemeris/types'
+import { MS_PER_HOUR } from '../astro/math/time'
 import type { ThemeMode } from '../theme/types'
 
 export type ToggleKey = 'showZodiac' | 'showZoneRings'
@@ -51,7 +52,7 @@ export const useAppStore = create<AppState>((set) => ({
   advanceTimeByMs: (deltaMs) =>
     set((s) => ({ t0: new Date(s.t0.getTime() + deltaMs) })),
   advanceTimeByHours: (deltaHours) =>
-    set((s) => ({ t0: new Date(s.t0.getTime() + deltaHours * 60 * 60 * 1000) })),
+    set((s) => ({ t0: new Date(s.t0.getTime() + deltaHours * MS_PER_HOUR) })),
   tiltDeg: 0,
   setTiltDeg: (tiltDeg) => set({ tiltDeg }),
   selectedBody: null,

@@ -10,14 +10,13 @@ import type { BodyId } from '../astro/config'
 import type { BodyState } from '../astro/ephemeris/types'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { degToRad, radToDeg } from '../astro/math/angles'
+import { MS_PER_DAY } from '../astro/math/time'
 import { unwrapRadians } from '../astro/math/unwrap'
 import { elongationRad, synodicPhaseRad } from '../astro/synodic'
 import { makeSampleTimes, sampleBodyStates } from '../astro/trails/sampling'
 import { computeDerivativeDegPerDay, motionFromDerivative, type MotionKind } from '../astro/trails/retrograde'
 import type { ThemeMode } from '../theme/types'
 import { SCENE_PALETTE } from '../theme/palette'
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 const DIAL_SIZE = 108
 const DIAL_CX = DIAL_SIZE / 2
 const DIAL_CY = DIAL_SIZE / 2

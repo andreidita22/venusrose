@@ -4,6 +4,7 @@ import { CHART_OUTER_RADIUS, Z_SCALE } from '../astro/config'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
+import { MS_PER_HOUR } from '../astro/math/time'
 import { meanLunarNodeLongitudeRad } from '../astro/moon/meanNode'
 import { makeSampleTimes, sampleBodyStates } from '../astro/trails/sampling'
 import { useAppStore } from '../state/store'
@@ -42,7 +43,7 @@ export function MoonExtras() {
     const moonNow = astronomyEngineProvider.getBodyState('moon', t0)
     const moonBaseRadius = moonNow ? scaleRadiusAUToScene(moonNow.distAu) : 1.0
 
-    const stepMs = ORBIT_STEP_HOURS * 60 * 60 * 1000
+    const stepMs = ORBIT_STEP_HOURS * MS_PER_HOUR
     const centerMs = Math.round(t0.getTime() / stepMs) * stepMs
     const center = new Date(centerMs)
     const times = makeSampleTimes(center, ORBIT_WINDOW_DAYS, ORBIT_STEP_HOURS)

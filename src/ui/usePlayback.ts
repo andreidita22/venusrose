@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { MS_PER_HOUR } from '../astro/math/time'
 import { useAppStore } from '../state/store'
-
-const MS_PER_HOUR = 60 * 60 * 1000
 
 export function usePlayback() {
   const isPlaying = useAppStore((s) => s.isPlaying)
@@ -33,4 +32,3 @@ export function usePlayback() {
     return () => cancelAnimationFrame(raf)
   }, [advanceTimeByMs, isPlaying, timeStepHours])
 }
-

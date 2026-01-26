@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { degToRad } from '../astro/math/angles'
+import { MS_PER_DAY } from '../astro/math/time'
 import {
   computeDerivativeDegPerDay,
   detectStations,
   motionFromDerivative,
 } from '../astro/trails/retrograde'
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 describe('retrograde', () => {
   it('classifies motion from derivative', () => {
@@ -42,4 +41,3 @@ describe('retrograde', () => {
     expect(stations[0].timeMs).toBeCloseTo(2 * MS_PER_DAY, 4)
   })
 })
-

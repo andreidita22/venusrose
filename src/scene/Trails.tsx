@@ -5,6 +5,7 @@ import { STATION_EPS_DEG_PER_DAY, TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS, Z_SCALE }
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
+import { MS_PER_DAY } from '../astro/math/time'
 import { unwrapRadians } from '../astro/math/unwrap'
 import { makeSampleTimes, sampleBodyStates } from '../astro/trails/sampling'
 import {
@@ -18,7 +19,6 @@ import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
 const TRAIL_Z_OFFSET = 0.0025
-const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 type Seg = { kind: MotionKind; points: [number, number, number][] }
 

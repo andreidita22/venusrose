@@ -3,12 +3,11 @@ import { BODY_META } from '../astro/bodies'
 import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
+import { MS_PER_HOUR } from '../astro/math/time'
 import type { TimeStep } from '../state/store'
 import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
 import { SynodicDial } from './SynodicDial'
-
-const MS_PER_HOUR = 60 * 60 * 1000
 
 function formatStep(step: TimeStep): string {
   if (step % 24 === 0) {

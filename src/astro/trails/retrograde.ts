@@ -1,7 +1,6 @@
 import type { BodyState } from '../ephemeris/types'
 import { radToDeg } from '../math/angles'
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000
+import { MS_PER_DAY } from '../math/time'
 
 export type MotionKind = 'direct' | 'retrograde' | 'station'
 
@@ -80,7 +79,7 @@ export function detectStations(
     const t0 = timesMs[i0]
     const t1 = timesMs[i1]
 
-    const frac = d1 === d0 ? 0.5 : (0 - d0) / (d1 - d0)
+    const frac = -d0 / (d1 - d0)
     const timeMs = t0 + Math.min(1, Math.max(0, frac)) * (t1 - t0)
 
     out.push({
@@ -107,4 +106,3 @@ export function lonLatDistAtTime(states: readonly BodyState[]): {
     distAu: states.map((s) => s.distAu),
   }
 }
-
