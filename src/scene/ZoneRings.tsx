@@ -37,6 +37,7 @@ export function ZoneRings() {
             lineWidth={1.1}
             opacity={ringOpacity}
             transparent
+            depthWrite={false}
           />
           {label ? (
             <Text
