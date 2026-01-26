@@ -1,0 +1,118 @@
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.controlBar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  right: 12px;
+  max-width: 900px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.controlRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.controlLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--app-fg);
+}
+
+.controlInput {
+  appearance: none;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  color: inherit;
+}
+
+.controlInput:focus {
+  outline: none;
+  border-color: var(--button-hover-border);
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.controlRange {
+  width: 220px;
+}
+
+.controlButton {
+  padding: 7px 10px;
+  font-size: 12px;
+  border: 1px solid var(--button-border);
+  border-radius: 10px;
+  color: var(--app-fg);
+}
+
+.controlButton:hover {
+  border-color: var(--button-hover-border);
+}
+
+.controlToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--app-fg);
+}
+
+.selectedBody {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--app-fg);
+  min-width: 280px;
+}
+
+.selectedGlyph {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--app-fg);
+}
+
+.selectedLabel {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.selectedStats {
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.selectedBodyHint {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.spacer {
+  flex: 1;
+}
