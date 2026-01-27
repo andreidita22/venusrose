@@ -1,5 +1,6 @@
 import type { BodyId } from '../config'
 import type { BodyState, EphemerisProvider } from '../ephemeris/types'
+import { MS_PER_DAY } from '../math/time'
 import { unwrapRadians } from '../math/unwrap'
 import { makeSampleTimes, sampleBodyStates } from './sampling'
 import {
@@ -48,6 +49,12 @@ export type TrailAnalysis = {
   motionAtPoints: readonly MotionKind[]
   stations: readonly StationEvent[]
   stationStates: readonly (StationEvent & { state: BodyState })[]
+}
+
+export function trailCenterMsFor(t0Ms: number, windowDays: number): number {
+  const bucketMs = windowDays * MS_PER_DAY * 0.25
+  if (!Number.isFinite(bucketMs) || bucketMs <= 0) return t0Ms
+  return Math.round(t0Ms / bucketMs) * bucketMs
 }
 
 export function getSampleTimes(centerMs: number, windowDays: number, stepHours: number): readonly Date[] {
@@ -126,4 +133,3 @@ export function getTrailAnalysis(
   lruSet(trailCache, key, out, TRAIL_CACHE_MAX)
   return out
 }
-

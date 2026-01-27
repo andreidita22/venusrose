@@ -9,6 +9,7 @@ import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 import { EclipticPlane } from './EclipticPlane'
 import { DistanceBands } from './DistanceBands'
+import { EventMarkers } from './EventMarkers'
 import { MoonExtras } from './MoonExtras'
 import { PlanetTokens } from './PlanetTokens'
 import { SynodicArc } from './SynodicArc'
@@ -87,6 +88,7 @@ export function SceneRoot() {
         <SynodicArc />
         <MoonExtras />
         <Trails />
+        <EventMarkers />
         <PlanetTokens />
       </group>
 

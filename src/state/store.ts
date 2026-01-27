@@ -39,6 +39,8 @@ export type AppState = {
   setShowDistanceBands: (showDistanceBands: boolean) => void
   showSynodic: boolean
   setShowSynodic: (showSynodic: boolean) => void
+  showEvents: boolean
+  setShowEvents: (showEvents: boolean) => void
   showTrails: boolean
   setShowTrails: (showTrails: boolean) => void
   trailMode: TrailMode
@@ -77,6 +79,8 @@ export const useAppStore = create<AppState>((set) => ({
   setShowDistanceBands: (showDistanceBands) => set({ showDistanceBands }),
   showSynodic: true,
   setShowSynodic: (showSynodic) => set({ showSynodic }),
+  showEvents: false,
+  setShowEvents: (showEvents) => set({ showEvents }),
   showTrails: true,
   setShowTrails: (showTrails) => set({ showTrails }),
   trailMode: 'wheel',

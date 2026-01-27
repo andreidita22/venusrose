@@ -10,9 +10,8 @@ import type { BodyId } from '../astro/config'
 import type { BodyState } from '../astro/ephemeris/types'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { degToRad, radToDeg } from '../astro/math/angles'
-import { MS_PER_DAY } from '../astro/math/time'
 import { elongationRad, synodicPhaseRad } from '../astro/synodic'
-import { getBodySamples, getTrailAnalysis } from '../astro/trails/cache'
+import { getBodySamples, getTrailAnalysis, trailCenterMsFor } from '../astro/trails/cache'
 import type { ThemeMode } from '../theme/types'
 import { SCENE_PALETTE } from '../theme/palette'
 const DIAL_SIZE = 108
@@ -49,8 +48,7 @@ export function SynodicDial({ body, bodyState, sunState, t0, theme }: SynodicDia
   const t0Ms = t0.getTime()
   const windowDays = TRAIL_WINDOW_DAYS[body]
   const stepHours = TRAIL_STEP_HOURS[body]
-  const bucketMs = windowDays * MS_PER_DAY * 0.25
-  const centerMs = bucketMs > 0 ? Math.round(t0Ms / bucketMs) * bucketMs : t0Ms
+  const centerMs = trailCenterMsFor(t0Ms, windowDays)
 
   const phaseRad = synodicPhaseRad(bodyState.lonRad, sunState.lonRad)
   const phaseDeg = radToDeg(phaseRad)

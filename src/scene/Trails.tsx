@@ -5,8 +5,7 @@ import { STATION_EPS_DEG_PER_DAY, TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS, Z_SCALE }
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
-import { MS_PER_DAY } from '../astro/math/time'
-import { getTrailAnalysis } from '../astro/trails/cache'
+import { getTrailAnalysis, trailCenterMsFor } from '../astro/trails/cache'
 import type { MotionKind, StationEvent } from '../astro/trails/retrograde'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
@@ -69,12 +68,7 @@ export function Trails() {
 
   const trailCenterMs = useMemo(() => {
     if (!showTrails || !selectedBody) return t0.getTime()
-
-    const windowDays = TRAIL_WINDOW_DAYS[selectedBody]
-    const bucketMs = windowDays * MS_PER_DAY * 0.25
-    if (!Number.isFinite(bucketMs) || bucketMs <= 0) return t0.getTime()
-
-    return Math.round(t0.getTime() / bucketMs) * bucketMs
+    return trailCenterMsFor(t0.getTime(), TRAIL_WINDOW_DAYS[selectedBody])
   }, [selectedBody, showTrails, t0])
 
   const analysis = useMemo(() => {

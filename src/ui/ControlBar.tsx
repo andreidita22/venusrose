@@ -1,9 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { BODY_META } from '../astro/bodies'
+import { computeSynodicEvents } from '../astro/events/synodicEvents'
 import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
+import { TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS } from '../astro/config'
+import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
 import { MS_PER_HOUR } from '../astro/math/time'
+import { trailCenterMsFor } from '../astro/trails/cache'
 import type { FocusMode, TimeStep } from '../state/store'
 import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
@@ -62,6 +66,8 @@ export function ControlBar() {
   const setShowDistanceBands = useAppStore((s) => s.setShowDistanceBands)
   const showSynodic = useAppStore((s) => s.showSynodic)
   const setShowSynodic = useAppStore((s) => s.setShowSynodic)
+  const showEvents = useAppStore((s) => s.showEvents)
+  const setShowEvents = useAppStore((s) => s.setShowEvents)
   const showTrails = useAppStore((s) => s.showTrails)
   const setShowTrails = useAppStore((s) => s.setShowTrails)
   const trailMode = useAppStore((s) => s.trailMode)
@@ -74,6 +80,22 @@ export function ControlBar() {
   const selectedRange = selectedBody ? DISTANCE_RANGE_AU[selectedBody] : undefined
   const closeness = selectedRange && selectedState ? distanceCloseness(selectedRange, selectedState.distAu) : null
   const sunState = bodyStates.sun
+
+  const eventsCenterMs = useMemo(() => {
+    if (!showEvents || !selectedBody) return t0.getTime()
+    return trailCenterMsFor(t0.getTime(), TRAIL_WINDOW_DAYS[selectedBody])
+  }, [selectedBody, showEvents, t0])
+
+  const synodicEvents = useMemo(() => {
+    if (!showEvents || !selectedBody) return null
+    return computeSynodicEvents(
+      astronomyEngineProvider,
+      selectedBody,
+      new Date(eventsCenterMs),
+      TRAIL_WINDOW_DAYS[selectedBody],
+      TRAIL_STEP_HOURS[selectedBody],
+    )
+  }, [eventsCenterMs, selectedBody, showEvents])
 
   const [scrubSteps, setScrubSteps] = useState(0)
   const scrubAnchorMsRef = useRef<number | null>(null)
@@ -325,6 +347,14 @@ export function ControlBar() {
         <label className="controlToggle">
           <input
             type="checkbox"
+            checked={showEvents}
+            onChange={(e) => setShowEvents(e.target.checked)}
+          />
+          Events
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
             checked={trailMode === '3d'}
             disabled={!showTrails}
             onChange={(e) => setTrailMode(e.target.checked ? '3d' : 'wheel')}
@@ -380,6 +410,35 @@ export function ControlBar() {
                 ) : null}
                 {showSynodic && selectedBody !== 'sun' && sunState ? (
                   <SynodicDial body={selectedBody} bodyState={selectedState} sunState={sunState} t0={t0} theme={theme} />
+                ) : null}
+                {showEvents && synodicEvents && synodicEvents.length > 0 ? (
+                  <div className="eventChips" aria-label="Synodic events">
+                    {(() => {
+                      const t0Ms = t0.getTime()
+                      const nextIndex = synodicEvents.findIndex((ev) => ev.timeMs >= t0Ms)
+                      return synodicEvents.map((ev, idx) => {
+                        const isNext = nextIndex >= 0 && idx === nextIndex
+                        const isPast = ev.timeMs < t0Ms
+                        const timeLabel = formatUTCDateTimeLocal(new Date(ev.timeMs)).replace('T', ' ')
+                        const title = [ev.details ?? ev.kind, `${timeLabel} UTC`].filter(Boolean).join(' · ')
+                        return (
+                          <button
+                            key={`${ev.kind}-${Math.round(ev.timeMs)}`}
+                            type="button"
+                            className={`eventChip${isPast ? ' past' : ''}${isNext ? ' next' : ''}`}
+                            title={title}
+                            onClick={() => {
+                              setIsPlaying(false)
+                              setT0(new Date(ev.timeMs))
+                            }}
+                          >
+                            <span className="eventChipLabel">{ev.label}</span>
+                            <span className="eventChipTime">{timeLabel}</span>
+                          </button>
+                        )
+                      })
+                    })()}
+                  </div>
                 ) : null}
               </>
             ) : (

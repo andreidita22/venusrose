@@ -214,6 +214,54 @@
   font-size: 11px;
 }
 
+.eventChips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eventChip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--app-fg);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.eventChip:hover {
+  border-color: var(--button-hover-border);
+}
+
+.eventChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.eventChip.past {
+  opacity: 0.65;
+}
+
+.eventChip.next {
+  border-color: var(--link);
+  background: color-mix(in srgb, var(--input-bg) 70%, var(--link) 30%);
+}
+
+.eventChipLabel {
+  font-weight: 700;
+}
+
+.eventChipTime {
+  opacity: 0.85;
+}
+
 .selectedBodyHint {
   font-size: 12px;
   opacity: 0.7;
