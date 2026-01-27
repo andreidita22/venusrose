@@ -17,7 +17,7 @@ type Seg = { kind: MotionKind; points: [number, number, number][] }
 
 type SegWithIndex = Seg & { startIndex: number }
 
-function splitByMotion(points: [number, number, number][], motionAtPoints: MotionKind[]): SegWithIndex[] {
+function splitByMotion(points: [number, number, number][], motionAtPoints: readonly MotionKind[]): SegWithIndex[] {
   if (points.length === 0) return []
   if (motionAtPoints.length !== points.length) throw new Error('motionAtPoints and points length mismatch')
 
@@ -127,7 +127,11 @@ export function Trails() {
       if (trailMode === 'wheel') {
         return {
           ...ev,
-          position: [Math.cos(ev.state.lonRad) * baseRadius, Math.sin(ev.state.lonRad) * baseRadius, TRAIL_Z_OFFSET],
+          position: [
+            Math.cos(ev.state.lonRad) * baseRadius,
+            Math.sin(ev.state.lonRad) * baseRadius,
+            TRAIL_Z_OFFSET,
+          ] as [number, number, number],
         }
       }
       const position = eclipticToScenePosition(

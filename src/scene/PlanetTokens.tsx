@@ -240,7 +240,7 @@ function PlanetToken({
             anchorY="middle"
             outlineColor={palette.labelOutlineBg}
             outlineWidth={GLYPH_OUTLINE_WIDTH}
-            depthTest={false}
+            material-depthTest={false}
           >
             {glyph}
           </Text>
@@ -252,7 +252,7 @@ function PlanetToken({
               anchorX="left"
               anchorY="middle"
               fillOpacity={cueOpacity * focusOpacity}
-              depthTest={false}
+              material-depthTest={false}
             >
               {latCue}
             </Text>
@@ -267,7 +267,7 @@ function PlanetToken({
               anchorY="top"
               outlineColor={palette.labelOutlineBg}
               outlineWidth={LABEL_OUTLINE_WIDTH}
-              depthTest={false}
+              material-depthTest={false}
             >
               {label}
             </Text>
@@ -280,7 +280,7 @@ function PlanetToken({
               fillOpacity={focusOpacity}
               anchorX="center"
               anchorY="top"
-              depthTest={false}
+              material-depthTest={false}
             >
               {latLabel}
             </Text>

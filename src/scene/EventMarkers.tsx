@@ -140,7 +140,7 @@ export function EventMarkers() {
               anchorY="middle"
               outlineColor={palette.labelOutlineBg}
               outlineWidth={EVENT_LABEL_OUTLINE_WIDTH}
-              depthTest={false}
+              material-depthTest={false}
             >
               {m.label}
             </Text>
