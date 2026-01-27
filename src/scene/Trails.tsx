@@ -6,15 +6,8 @@ import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEng
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { MS_PER_DAY } from '../astro/math/time'
-import { unwrapRadians } from '../astro/math/unwrap'
-import { makeSampleTimes, sampleBodyStates } from '../astro/trails/sampling'
-import {
-  computeDerivativeDegPerDay,
-  detectStations,
-  motionFromDerivative,
-  type MotionKind,
-  type StationEvent,
-} from '../astro/trails/retrograde'
+import { getTrailAnalysis } from '../astro/trails/cache'
+import type { MotionKind, StationEvent } from '../astro/trails/retrograde'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
@@ -84,30 +77,26 @@ export function Trails() {
     return Math.round(t0.getTime() / bucketMs) * bucketMs
   }, [selectedBody, showTrails, t0])
 
-  const trail = useMemo(() => {
+  const analysis = useMemo(() => {
     if (!showTrails || !selectedBody) return null
-
-    const centerDate = new Date(trailCenterMs)
-    const current = astronomyEngineProvider.getBodyState(selectedBody, centerDate)
-    if (!current) return null
-
     const windowDays = TRAIL_WINDOW_DAYS[selectedBody]
     const stepHours = TRAIL_STEP_HOURS[selectedBody]
+    return getTrailAnalysis(
+      astronomyEngineProvider,
+      selectedBody,
+      trailCenterMs,
+      windowDays,
+      stepHours,
+      STATION_EPS_DEG_PER_DAY,
+    )
+  }, [selectedBody, showTrails, trailCenterMs])
 
-    const times = makeSampleTimes(centerDate, windowDays, stepHours)
-    const samples = sampleBodyStates(astronomyEngineProvider, selectedBody, times)
+  const trail = useMemo(() => {
+    if (!analysis || !selectedBody) return null
 
-    const timesMs = samples.map((s) => s.date.getTime())
-    const lon = samples.map((s) => s.lonRad)
-    const lonU = unwrapRadians(lon)
+    const baseRadius = scaleRadiusAUToScene(analysis.current.distAu)
 
-    const dLonDegPerDay = computeDerivativeDegPerDay(timesMs, lonU)
-    const motionAtPoints = dLonDegPerDay.map((d) => motionFromDerivative(d, STATION_EPS_DEG_PER_DAY))
-    const stations = detectStations(timesMs, dLonDegPerDay, STATION_EPS_DEG_PER_DAY)
-
-    const baseRadius = scaleRadiusAUToScene(current.distAu)
-
-    const points: [number, number, number][] = samples.map((s) => {
+    const points: [number, number, number][] = analysis.samples.map((s) => {
       if (trailMode === 'wheel') {
         return [Math.cos(s.lonRad) * baseRadius, Math.sin(s.lonRad) * baseRadius, TRAIL_Z_OFFSET]
       }
@@ -121,31 +110,27 @@ export function Trails() {
       return [x, y, z]
     })
 
-    const segments = splitByMotion(points, motionAtPoints)
+    const segments = splitByMotion(points, analysis.motionAtPoints)
 
-    const stationPoints = stations
-      .map((ev) => {
-        const state = astronomyEngineProvider.getBodyState(selectedBody, new Date(ev.timeMs))
-        if (!state) return null
-        if (trailMode === 'wheel') {
-          return {
-            ...ev,
-            position: [Math.cos(state.lonRad) * baseRadius, Math.sin(state.lonRad) * baseRadius, TRAIL_Z_OFFSET],
-          }
+    const stationPoints = analysis.stationStates.map((ev) => {
+      if (trailMode === 'wheel') {
+        return {
+          ...ev,
+          position: [Math.cos(ev.state.lonRad) * baseRadius, Math.sin(ev.state.lonRad) * baseRadius, TRAIL_Z_OFFSET],
         }
-        const position = eclipticToScenePosition(
-          state.lonRad,
-          state.latRad,
-          state.distAu,
-          Z_SCALE,
-          scaleRadiusAUToScene,
-        )
-        return { ...ev, position }
-      })
-      .filter((x): x is StationEvent & { position: [number, number, number] } => Boolean(x))
+      }
+      const position = eclipticToScenePosition(
+        ev.state.lonRad,
+        ev.state.latRad,
+        ev.state.distAu,
+        Z_SCALE,
+        scaleRadiusAUToScene,
+      )
+      return { ...ev, position }
+    })
 
     return { body: selectedBody, segments, stationPoints, color: BODY_META[selectedBody].color }
-  }, [selectedBody, showTrails, trailCenterMs, trailMode])
+  }, [analysis, selectedBody, trailMode])
 
   if (!trail) return null
 
