@@ -64,6 +64,7 @@ export function Trails() {
   const selectedBody = useAppStore((s) => s.selectedBody)
   const showTrails = useAppStore((s) => s.showTrails)
   const showEvents = useAppStore((s) => s.showEvents)
+  const eventKinds = useAppStore((s) => s.eventKinds)
   const trailMode = useAppStore((s) => s.trailMode)
   const theme = useAppStore((s) => s.theme)
   const palette = SCENE_PALETTE[theme]
@@ -165,22 +166,23 @@ export function Trails() {
         )
       })}
 
-      {trail.stationPoints.map((ev) => (
-        <mesh
-          key={`${ev.kind}-${Math.round(ev.timeMs)}`}
-          position={ev.position}
-          rotation={[0, 0, Math.PI / 4]}
-          renderOrder={3.7}
-        >
-          <boxGeometry args={[0.14, 0.14, 0.02]} />
-          <meshBasicMaterial
-            color={stationColor(ev.kind)}
-            transparent
-            opacity={0.95}
-            depthWrite={false}
-          />
-        </mesh>
-      ))}
+      {(!showEvents || eventKinds.stations) &&
+        trail.stationPoints.map((ev) => (
+          <mesh
+            key={`${ev.kind}-${Math.round(ev.timeMs)}`}
+            position={ev.position}
+            rotation={[0, 0, Math.PI / 4]}
+            renderOrder={3.7}
+          >
+            <boxGeometry args={[0.14, 0.14, 0.02]} />
+            <meshBasicMaterial
+              color={stationColor(ev.kind)}
+              transparent
+              opacity={0.95}
+              depthWrite={false}
+            />
+          </mesh>
+        ))}
     </group>
   )
 }
