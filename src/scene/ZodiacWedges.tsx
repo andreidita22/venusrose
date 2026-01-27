@@ -115,7 +115,7 @@ export function ZodiacWedges() {
             color={highlighted ? palette.labelText : palette.zodiacGlyph}
             anchorX="center"
             anchorY="middle"
-            depthTest={false}
+            material-depthTest={false}
           >
             {sign.glyph}
           </Text>

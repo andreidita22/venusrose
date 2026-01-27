@@ -49,6 +49,14 @@ npm run test:run
 npm run build
 ```
 
+## GitHub Pages
+
+This repo includes a GitHub Actions workflow that builds the app and deploys `dist/` to GitHub Pages on pushes to `main`.
+
+1. In GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**
+2. Push to `main` (or re-run the workflow) and wait for “Deploy to GitHub Pages”
+3. Your site should be available at `https://<username>.github.io/<repo>/`
+
 ## Computation notes
 
 - **Zodiac**: tropical.
