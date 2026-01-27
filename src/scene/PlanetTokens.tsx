@@ -33,6 +33,7 @@ export function PlanetTokens() {
   const tiltDeg = useAppStore((s) => s.tiltDeg)
   const selectedBody = useAppStore((s) => s.selectedBody)
   const setSelectedBody = useAppStore((s) => s.setSelectedBody)
+  const focusMode = useAppStore((s) => s.focusMode)
   const setBodyStates = useAppStore((s) => s.setBodyStates)
   const theme = useAppStore((s) => s.theme)
   const palette = SCENE_PALETTE[theme]
@@ -56,6 +57,8 @@ export function PlanetTokens() {
   return (
     <group renderOrder={4}>
       {DEFAULT_BODY_ORDER.map((body) => {
+        if (focusMode === 'solo' && selectedBody && body !== selectedBody) return null
+
         const state = bodyStates[body]
         if (!state) return null
 
@@ -78,6 +81,8 @@ export function PlanetTokens() {
         return (
           <PlanetToken
             key={body}
+            hasSelection={Boolean(selectedBody)}
+            focusMode={focusMode}
             position={pos}
             tokenColor={tokenColor}
             glyph={meta.glyph}
@@ -99,6 +104,8 @@ export function PlanetTokens() {
 }
 
 type PlanetTokenProps = {
+  hasSelection: boolean
+  focusMode: 'off' | 'fade' | 'solo'
   position: [number, number, number]
   tokenColor: Color
   glyph: string
@@ -115,6 +122,8 @@ type PlanetTokenProps = {
 }
 
 function PlanetToken({
+  hasSelection,
+  focusMode,
   position,
   tokenColor,
   glyph,
@@ -132,6 +141,10 @@ function PlanetToken({
   const [hovered, setHovered] = useState(false)
   const showLabel = selected || hovered
 
+  const dimOthers = hasSelection && focusMode === 'fade'
+  const isPrimary = selected || hovered
+  const focusOpacity = dimOthers ? (isPrimary ? 1 : 0.22) : 1
+
   const [x, y, z] = position
   const stemPoints = [
     [x, y, 0],
@@ -145,8 +158,19 @@ function PlanetToken({
         color={palette.stemLine}
         lineWidth={1}
         transparent
-        opacity={stemOpacity * 0.85}
+        opacity={stemOpacity * 0.85 * focusOpacity}
       />
+      {selected ? (
+        <mesh position={position} scale={TOKEN_SELECTED_SCALE * 1.25} renderOrder={4.1}>
+          <sphereGeometry args={[TOKEN_RADIUS * 1.25, 20, 20]} />
+          <meshBasicMaterial
+            color={tokenColor}
+            transparent
+            opacity={0.22}
+            depthWrite={false}
+          />
+        </mesh>
+      ) : null}
       <mesh
         position={position}
         scale={selected ? TOKEN_SELECTED_SCALE : 1}
@@ -170,6 +194,8 @@ function PlanetToken({
           emissiveIntensity={selected ? 0.65 : 0.35}
           roughness={0.45}
           metalness={0.05}
+          transparent={focusOpacity < 0.999}
+          opacity={focusOpacity}
         />
       </mesh>
 
@@ -178,10 +204,12 @@ function PlanetToken({
           <Text
             fontSize={0.28}
             color={palette.labelText}
+            fillOpacity={focusOpacity}
             anchorX="center"
             anchorY="middle"
             outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
             outlineWidth={0.015}
+            depthTest={false}
           >
             {glyph}
           </Text>
@@ -192,7 +220,8 @@ function PlanetToken({
               color={palette.stemLine}
               anchorX="left"
               anchorY="middle"
-              fillOpacity={cueOpacity}
+              fillOpacity={cueOpacity * focusOpacity}
+              depthTest={false}
             >
               {latCue}
             </Text>
@@ -202,10 +231,12 @@ function PlanetToken({
               position={[0, -0.36, 0]}
               fontSize={0.22}
               color={palette.labelText}
+              fillOpacity={focusOpacity}
               anchorX="center"
               anchorY="top"
               outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
               outlineWidth={0.02}
+              depthTest={false}
             >
               {label}
             </Text>
@@ -215,8 +246,10 @@ function PlanetToken({
               position={[0, -0.62, 0]}
               fontSize={0.18}
               color={palette.subtleText}
+              fillOpacity={focusOpacity}
               anchorX="center"
               anchorY="top"
+              depthTest={false}
             >
               {latLabel}
             </Text>

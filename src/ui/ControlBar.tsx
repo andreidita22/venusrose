@@ -4,7 +4,7 @@ import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
 import { MS_PER_HOUR } from '../astro/math/time'
-import type { TimeStep } from '../state/store'
+import type { FocusMode, TimeStep } from '../state/store'
 import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
 import { SynodicDial } from './SynodicDial'
@@ -66,6 +66,8 @@ export function ControlBar() {
   const setShowTrails = useAppStore((s) => s.setShowTrails)
   const trailMode = useAppStore((s) => s.trailMode)
   const setTrailMode = useAppStore((s) => s.setTrailMode)
+  const focusMode = useAppStore((s) => s.focusMode)
+  const setFocusMode = useAppStore((s) => s.setFocusMode)
 
   const selectedState = selectedBody ? bodyStates[selectedBody] : null
   const selectedMeta = selectedBody ? BODY_META[selectedBody] : null
@@ -149,6 +151,20 @@ export function ControlBar() {
             <option value={24}>1d/s</option>
             <option value={168}>7d/s</option>
             <option value={720}>1mo/s</option>
+          </select>
+        </label>
+
+        <label className="controlLabel">
+          Focus
+          <select
+            className="controlSelect"
+            value={focusMode}
+            onChange={(e) => setFocusMode(e.target.value as FocusMode)}
+            title="Dim or solo the selection"
+          >
+            <option value="off">Off</option>
+            <option value="fade">Fade</option>
+            <option value="solo">Solo</option>
           </select>
         </label>
 
