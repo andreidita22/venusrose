@@ -1,8 +1,15 @@
 import { Billboard, Text } from '@react-three/drei'
 import { useMemo } from 'react'
 import { BODY_META } from '../astro/bodies'
-import { STATION_EPS_DEG_PER_DAY, TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS, Z_SCALE } from '../astro/config'
-import { computeSynodicEvents } from '../astro/events/synodicEvents'
+import {
+  EVENT_ORB_DEG_BY_BODY,
+  INNER_CONJ_ORB_DEG_BY_BODY,
+  STATION_EPS_DEG_PER_DAY,
+  TRAIL_STEP_HOURS,
+  TRAIL_WINDOW_DAYS,
+  Z_SCALE,
+} from '../astro/config'
+import { computeSynodicEvents, filterSynodicEvents } from '../astro/events/synodicEvents'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
@@ -26,6 +33,7 @@ export function EventMarkers() {
   const setIsPlaying = useAppStore((s) => s.setIsPlaying)
   const selectedBody = useAppStore((s) => s.selectedBody)
   const showEvents = useAppStore((s) => s.showEvents)
+  const eventKinds = useAppStore((s) => s.eventKinds)
   const showTrails = useAppStore((s) => s.showTrails)
   const trailMode = useAppStore((s) => s.trailMode)
   const theme = useAppStore((s) => s.theme)
@@ -68,12 +76,19 @@ export function EventMarkers() {
     if (!showEvents || !selectedBody || !analysis || !spec) return null
 
     const baseRadius = scaleRadiusAUToScene(analysis.current.distAu)
-    const events = computeSynodicEvents(
-      astronomyEngineProvider,
-      selectedBody,
-      new Date(spec.centerMs),
-      spec.windowDays,
-      stepHours,
+    const events = filterSynodicEvents(
+      computeSynodicEvents(
+        astronomyEngineProvider,
+        selectedBody,
+        new Date(spec.centerMs),
+        spec.windowDays,
+        stepHours,
+        {
+          orbDeg: EVENT_ORB_DEG_BY_BODY[selectedBody],
+          innerConjOrbDeg: INNER_CONJ_ORB_DEG_BY_BODY[selectedBody],
+        },
+      ),
+      eventKinds,
     )
 
     return events
@@ -101,7 +116,7 @@ export function EventMarkers() {
 
         return { ...ev, position, color }
       })
-  }, [analysis, selectedBody, showEvents, showTrails, spec, stepHours, trailMode])
+  }, [analysis, selectedBody, eventKinds, showEvents, showTrails, spec, stepHours, trailMode])
 
   if (!markers || markers.length === 0 || !selectedBody) return null
 

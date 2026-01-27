@@ -214,6 +214,38 @@
   font-size: 11px;
 }
 
+.eventRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eventNavButton {
+  appearance: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+  color: var(--app-fg);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.eventNavButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eventNavButton:hover:not(:disabled) {
+  border-color: var(--button-hover-border);
+}
+
+.eventNavButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
 .eventChips {
   display: flex;
   gap: 8px;

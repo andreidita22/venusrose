@@ -54,6 +54,23 @@ export type SynodicEventsOptions = {
   maxElongationMinDeg?: number
 }
 
+export type SynodicEventKindToggles = {
+  aspects: boolean
+  stations: boolean
+  maxElongation: boolean
+}
+
+export function filterSynodicEvents(
+  events: readonly SynodicEvent[],
+  kinds: SynodicEventKindToggles,
+): SynodicEvent[] {
+  return events.filter((ev) => {
+    if (ev.kind === 'station_retro' || ev.kind === 'station_direct') return kinds.stations
+    if (ev.kind === 'max_elongation') return kinds.maxElongation
+    return kinds.aspects
+  })
+}
+
 function isInnerPlanet(body: BodyId): boolean {
   return body === 'mercury' || body === 'venus'
 }

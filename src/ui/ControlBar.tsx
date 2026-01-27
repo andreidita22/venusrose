@@ -1,8 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { BODY_META } from '../astro/bodies'
-import { computeSynodicEvents } from '../astro/events/synodicEvents'
+import { computeSynodicEvents, filterSynodicEvents } from '../astro/events/synodicEvents'
 import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
-import { TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS } from '../astro/config'
+import {
+  EVENT_ORB_DEG_BY_BODY,
+  INNER_CONJ_ORB_DEG_BY_BODY,
+  TRAIL_STEP_HOURS,
+  TRAIL_WINDOW_DAYS,
+} from '../astro/config'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
@@ -69,6 +74,8 @@ export function ControlBar() {
   const setShowSynodic = useAppStore((s) => s.setShowSynodic)
   const showEvents = useAppStore((s) => s.showEvents)
   const setShowEvents = useAppStore((s) => s.setShowEvents)
+  const eventKinds = useAppStore((s) => s.eventKinds)
+  const setEventKind = useAppStore((s) => s.setEventKind)
   const showTrails = useAppStore((s) => s.showTrails)
   const setShowTrails = useAppStore((s) => s.setShowTrails)
   const trailMode = useAppStore((s) => s.trailMode)
@@ -109,8 +116,26 @@ export function ControlBar() {
       new Date(eventsSpec.centerMs),
       eventsSpec.windowDays,
       TRAIL_STEP_HOURS[selectedBody],
+      {
+        orbDeg: EVENT_ORB_DEG_BY_BODY[selectedBody],
+        innerConjOrbDeg: INNER_CONJ_ORB_DEG_BY_BODY[selectedBody],
+      },
     )
   }, [eventsSpec, selectedBody, showEvents])
+
+  const filteredEvents = useMemo(() => {
+    if (!synodicEvents) return null
+    return filterSynodicEvents(synodicEvents, eventKinds)
+  }, [eventKinds, synodicEvents])
+
+  const nav = useMemo((): { prevTimeMs: number | null; nextTimeMs: number | null; nextIndex: number } | null => {
+    if (!filteredEvents || filteredEvents.length === 0) return null
+    const idx = filteredEvents.findIndex((ev) => ev.timeMs >= t0Ms)
+    const nextIndex = idx >= 0 ? idx : -1
+    const prev = idx === -1 ? filteredEvents[filteredEvents.length - 1] : idx > 0 ? filteredEvents[idx - 1] : null
+    const next = idx >= 0 ? filteredEvents[idx] : null
+    return { prevTimeMs: prev?.timeMs ?? null, nextTimeMs: next?.timeMs ?? null, nextIndex }
+  }, [filteredEvents, t0Ms])
 
   const [scrubSteps, setScrubSteps] = useState(0)
   const scrubAnchorMsRef = useRef<number | null>(null)
@@ -370,6 +395,33 @@ export function ControlBar() {
         <label className="controlToggle">
           <input
             type="checkbox"
+            checked={eventKinds.aspects}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('aspects', e.target.checked)}
+          />
+          Aspects
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={eventKinds.stations}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('stations', e.target.checked)}
+          />
+          Stations
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={eventKinds.maxElongation}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('maxElongation', e.target.checked)}
+          />
+          Max elong
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
             checked={trailMode === '3d'}
             disabled={!showTrails}
             onChange={(e) => setTrailMode(e.target.checked ? '3d' : 'wheel')}
@@ -426,12 +478,37 @@ export function ControlBar() {
                 {showSynodic && selectedBody !== 'sun' && sunState ? (
                   <SynodicDial body={selectedBody} bodyState={selectedState} sunState={sunState} t0={t0} theme={theme} />
                 ) : null}
-                {showEvents && synodicEvents && synodicEvents.length > 0 ? (
-                  <div className="eventChips" aria-label="Synodic events">
-                    {(() => {
-                      const nextIndex = synodicEvents.findIndex((ev) => ev.timeMs >= t0Ms)
-                      return synodicEvents.map((ev, idx) => {
-                        const isNext = nextIndex >= 0 && idx === nextIndex
+                {showEvents && filteredEvents && filteredEvents.length > 0 ? (
+                  <div className="eventRow" aria-label="Synodic events">
+                    <button
+                      type="button"
+                      className="eventNavButton"
+                      disabled={!nav?.prevTimeMs}
+                      onClick={() => {
+                        if (!nav?.prevTimeMs) return
+                        setIsPlaying(false)
+                        setT0(new Date(nav.prevTimeMs))
+                      }}
+                      title="Jump to previous event"
+                    >
+                      Prev
+                    </button>
+                    <button
+                      type="button"
+                      className="eventNavButton"
+                      disabled={!nav?.nextTimeMs}
+                      onClick={() => {
+                        if (!nav?.nextTimeMs) return
+                        setIsPlaying(false)
+                        setT0(new Date(nav.nextTimeMs))
+                      }}
+                      title="Jump to next event"
+                    >
+                      Next
+                    </button>
+                    <div className="eventChips">
+                      {filteredEvents.map((ev, idx) => {
+                        const isNext = nav?.nextIndex === idx && nav.nextIndex >= 0
                         const isPast = ev.timeMs < t0Ms
                         const timeLabel = formatUTCDateTimeLocal(new Date(ev.timeMs)).replace('T', ' ')
                         const title = [ev.details ?? ev.kind, `${timeLabel} UTC`].filter(Boolean).join(' · ')
@@ -450,8 +527,8 @@ export function ControlBar() {
                             <span className="eventChipTime">{timeLabel}</span>
                           </button>
                         )
-                      })
-                    })()}
+                      })}
+                    </div>
                   </div>
                 ) : null}
               </>

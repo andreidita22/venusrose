@@ -33,6 +33,34 @@ export const V0_BODIES = [
 
 export type BodyId = (typeof V0_BODIES)[number]
 
+export const EVENT_ORB_DEG_BY_BODY: Record<BodyId, number> = {
+  sun: DEFAULT_EVENT_ORB_DEG,
+  moon: DEFAULT_EVENT_ORB_DEG,
+  mercury: DEFAULT_EVENT_ORB_DEG,
+  venus: DEFAULT_EVENT_ORB_DEG,
+  mars: DEFAULT_EVENT_ORB_DEG,
+  jupiter: DEFAULT_EVENT_ORB_DEG,
+  saturn: DEFAULT_EVENT_ORB_DEG,
+  uranus: DEFAULT_EVENT_ORB_DEG,
+  neptune: DEFAULT_EVENT_ORB_DEG,
+  pluto: DEFAULT_EVENT_ORB_DEG,
+  mean_node: DEFAULT_EVENT_ORB_DEG,
+}
+
+export const INNER_CONJ_ORB_DEG_BY_BODY: Record<BodyId, number> = {
+  sun: INNER_CONJ_ORB_DEG,
+  moon: INNER_CONJ_ORB_DEG,
+  mercury: INNER_CONJ_ORB_DEG,
+  venus: INNER_CONJ_ORB_DEG,
+  mars: DEFAULT_EVENT_ORB_DEG,
+  jupiter: DEFAULT_EVENT_ORB_DEG,
+  saturn: DEFAULT_EVENT_ORB_DEG,
+  uranus: DEFAULT_EVENT_ORB_DEG,
+  neptune: DEFAULT_EVENT_ORB_DEG,
+  pluto: DEFAULT_EVENT_ORB_DEG,
+  mean_node: DEFAULT_EVENT_ORB_DEG,
+}
+
 export const TRAIL_STEP_HOURS: Record<BodyId, number> = {
   sun: 12,
   moon: 6,
