@@ -57,6 +57,9 @@ This repo includes a GitHub Actions workflow that builds the app and deploys `di
 2. Push to `main` (or re-run the workflow) and wait for “Deploy to GitHub Pages”
 3. Your site should be available at `https://<username>.github.io/<repo>/`
 
+Custom domain:
+- If you use a custom domain (e.g. `venusrose.eu`), update `public/CNAME`.
+
 ## Computation notes
 
 - **Zodiac**: tropical.
