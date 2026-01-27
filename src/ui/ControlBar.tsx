@@ -1,9 +1,19 @@
 import { useMemo, useRef, useState } from 'react'
 import { BODY_META } from '../astro/bodies'
+import { computeSynodicEvents, filterSynodicEvents } from '../astro/events/synodicEvents'
 import { DISTANCE_RANGE_AU, distanceCloseness } from '../astro/distanceRanges'
+import {
+  EVENT_ORB_DEG_BY_BODY,
+  INNER_CONJ_ORB_DEG_BY_BODY,
+  TRAIL_STEP_HOURS,
+  TRAIL_WINDOW_DAYS,
+} from '../astro/config'
+import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
 import { MS_PER_HOUR } from '../astro/math/time'
+import { trailCenterMsFor } from '../astro/trails/cache'
+import { resolveTrailWindow } from '../astro/trails/window'
 import type { FocusMode, TimeStep } from '../state/store'
 import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
@@ -62,6 +72,10 @@ export function ControlBar() {
   const setShowDistanceBands = useAppStore((s) => s.setShowDistanceBands)
   const showSynodic = useAppStore((s) => s.showSynodic)
   const setShowSynodic = useAppStore((s) => s.setShowSynodic)
+  const showEvents = useAppStore((s) => s.showEvents)
+  const setShowEvents = useAppStore((s) => s.setShowEvents)
+  const eventKinds = useAppStore((s) => s.eventKinds)
+  const setEventKind = useAppStore((s) => s.setEventKind)
   const showTrails = useAppStore((s) => s.showTrails)
   const setShowTrails = useAppStore((s) => s.setShowTrails)
   const trailMode = useAppStore((s) => s.trailMode)
@@ -75,14 +89,125 @@ export function ControlBar() {
   const closeness = selectedRange && selectedState ? distanceCloseness(selectedRange, selectedState.distAu) : null
   const sunState = bodyStates.sun
 
+  const t0Ms = t0.getTime()
+  const baseEventsWindowDays = selectedBody ? TRAIL_WINDOW_DAYS[selectedBody] : 0
+  const eventsBaseCenterMs = useMemo(() => {
+    if (!showEvents || !selectedBody) return t0Ms
+    return trailCenterMsFor(t0Ms, baseEventsWindowDays)
+  }, [baseEventsWindowDays, selectedBody, showEvents, t0Ms])
+
+  const eventsSpec = useMemo(() => {
+    if (!showEvents || !selectedBody) return null
+    return resolveTrailWindow(
+      astronomyEngineProvider,
+      selectedBody,
+      eventsBaseCenterMs,
+      baseEventsWindowDays,
+      TRAIL_STEP_HOURS[selectedBody],
+      { ensureConjunctions: true },
+    )
+  }, [baseEventsWindowDays, eventsBaseCenterMs, selectedBody, showEvents])
+
+  const synodicEvents = useMemo(() => {
+    if (!showEvents || !selectedBody || !eventsSpec) return null
+    return computeSynodicEvents(
+      astronomyEngineProvider,
+      selectedBody,
+      new Date(eventsSpec.centerMs),
+      eventsSpec.windowDays,
+      TRAIL_STEP_HOURS[selectedBody],
+      {
+        orbDeg: EVENT_ORB_DEG_BY_BODY[selectedBody],
+        innerConjOrbDeg: INNER_CONJ_ORB_DEG_BY_BODY[selectedBody],
+      },
+    )
+  }, [eventsSpec, selectedBody, showEvents])
+
+  const filteredEvents = useMemo(() => {
+    if (!synodicEvents) return null
+    return filterSynodicEvents(synodicEvents, eventKinds)
+  }, [eventKinds, synodicEvents])
+
+  const nav = useMemo((): { prevTimeMs: number | null; nextTimeMs: number | null; nextIndex: number } | null => {
+    if (!filteredEvents || filteredEvents.length === 0) return null
+    const idx = filteredEvents.findIndex((ev) => ev.timeMs >= t0Ms)
+    const nextIndex = idx >= 0 ? idx : -1
+    const prev = idx === -1 ? filteredEvents[filteredEvents.length - 1] : idx > 0 ? filteredEvents[idx - 1] : null
+    const next = idx >= 0 ? filteredEvents[idx] : null
+    return { prevTimeMs: prev?.timeMs ?? null, nextTimeMs: next?.timeMs ?? null, nextIndex }
+  }, [filteredEvents, t0Ms])
+
   const [scrubSteps, setScrubSteps] = useState(0)
   const scrubAnchorMsRef = useRef<number | null>(null)
 
   const scrubMax = useMemo(() => scrubRangeStepsForStep(timeStep), [timeStep])
 
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth < 720
+  })
+
+  if (collapsed) {
+    return (
+      <div className="controlBar collapsed">
+        <div className="controlRow">
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => setCollapsed(false)}
+            title="Show controls"
+          >
+            Controls
+          </button>
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => {
+              setIsPlaying(false)
+              advanceTimeByHours(-timeStep)
+            }}
+            title={`Step −${formatStep(timeStep)}`}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="controlButton primary"
+            onClick={() => togglePlaying()}
+          >
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => {
+              setIsPlaying(false)
+              advanceTimeByHours(timeStep)
+            }}
+            title={`Step +${formatStep(timeStep)}`}
+          >
+            +
+          </button>
+          <div className="compactMeta" title="UTC">
+            {formatUTCDateTimeLocal(t0)}
+            {selectedMeta ? ` · ${selectedMeta.glyph}` : ''}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="controlBar">
       <div className="controlRow">
+        <button
+          type="button"
+          className="controlButton"
+          onClick={() => setCollapsed(true)}
+          title="Collapse controls"
+        >
+          Hide
+        </button>
         <label className="controlLabel">
           UTC
           <input
@@ -262,6 +387,41 @@ export function ControlBar() {
         <label className="controlToggle">
           <input
             type="checkbox"
+            checked={showEvents}
+            onChange={(e) => setShowEvents(e.target.checked)}
+          />
+          Events
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={eventKinds.aspects}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('aspects', e.target.checked)}
+          />
+          Aspects
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={eventKinds.stations}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('stations', e.target.checked)}
+          />
+          Stations
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
+            checked={eventKinds.maxElongation}
+            disabled={!showEvents}
+            onChange={(e) => setEventKind('maxElongation', e.target.checked)}
+          />
+          Max elong
+        </label>
+        <label className="controlToggle">
+          <input
+            type="checkbox"
             checked={trailMode === '3d'}
             disabled={!showTrails}
             onChange={(e) => setTrailMode(e.target.checked ? '3d' : 'wheel')}
@@ -317,6 +477,59 @@ export function ControlBar() {
                 ) : null}
                 {showSynodic && selectedBody !== 'sun' && sunState ? (
                   <SynodicDial body={selectedBody} bodyState={selectedState} sunState={sunState} t0={t0} theme={theme} />
+                ) : null}
+                {showEvents && filteredEvents && filteredEvents.length > 0 ? (
+                  <div className="eventRow" aria-label="Synodic events">
+                    <button
+                      type="button"
+                      className="eventNavButton"
+                      disabled={!nav?.prevTimeMs}
+                      onClick={() => {
+                        if (!nav?.prevTimeMs) return
+                        setIsPlaying(false)
+                        setT0(new Date(nav.prevTimeMs))
+                      }}
+                      title="Jump to previous event"
+                    >
+                      Prev
+                    </button>
+                    <button
+                      type="button"
+                      className="eventNavButton"
+                      disabled={!nav?.nextTimeMs}
+                      onClick={() => {
+                        if (!nav?.nextTimeMs) return
+                        setIsPlaying(false)
+                        setT0(new Date(nav.nextTimeMs))
+                      }}
+                      title="Jump to next event"
+                    >
+                      Next
+                    </button>
+                    <div className="eventChips">
+                      {filteredEvents.map((ev, idx) => {
+                        const isNext = nav?.nextIndex === idx && nav.nextIndex >= 0
+                        const isPast = ev.timeMs < t0Ms
+                        const timeLabel = formatUTCDateTimeLocal(new Date(ev.timeMs)).replace('T', ' ')
+                        const title = [ev.details ?? ev.kind, `${timeLabel} UTC`].filter(Boolean).join(' · ')
+                        return (
+                          <button
+                            key={`${ev.kind}-${Math.round(ev.timeMs)}`}
+                            type="button"
+                            className={`eventChip${isPast ? ' past' : ''}${isNext ? ' next' : ''}`}
+                            title={title}
+                            onClick={() => {
+                              setIsPlaying(false)
+                              setT0(new Date(ev.timeMs))
+                            }}
+                          >
+                            <span className="eventChipLabel">{ev.label}</span>
+                            <span className="eventChipTime">{timeLabel}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 ) : null}
               </>
             ) : (

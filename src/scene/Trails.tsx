@@ -5,8 +5,8 @@ import { STATION_EPS_DEG_PER_DAY, TRAIL_STEP_HOURS, TRAIL_WINDOW_DAYS, Z_SCALE }
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
-import { MS_PER_DAY } from '../astro/math/time'
-import { getTrailAnalysis } from '../astro/trails/cache'
+import { getTrailAnalysis, trailCenterMsFor } from '../astro/trails/cache'
+import { resolveTrailWindow } from '../astro/trails/window'
 import type { MotionKind, StationEvent } from '../astro/trails/retrograde'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
@@ -63,33 +63,44 @@ export function Trails() {
   const t0 = useAppStore((s) => s.t0)
   const selectedBody = useAppStore((s) => s.selectedBody)
   const showTrails = useAppStore((s) => s.showTrails)
+  const showEvents = useAppStore((s) => s.showEvents)
+  const eventKinds = useAppStore((s) => s.eventKinds)
   const trailMode = useAppStore((s) => s.trailMode)
   const theme = useAppStore((s) => s.theme)
   const palette = SCENE_PALETTE[theme]
 
-  const trailCenterMs = useMemo(() => {
-    if (!showTrails || !selectedBody) return t0.getTime()
+  const t0Ms = t0.getTime()
+  const baseWindowDays = selectedBody ? TRAIL_WINDOW_DAYS[selectedBody] : 0
+  const baseCenterMs = useMemo(() => {
+    if (!showTrails || !selectedBody) return t0Ms
+    return trailCenterMsFor(t0Ms, baseWindowDays)
+  }, [baseWindowDays, selectedBody, showTrails, t0Ms])
 
-    const windowDays = TRAIL_WINDOW_DAYS[selectedBody]
-    const bucketMs = windowDays * MS_PER_DAY * 0.25
-    if (!Number.isFinite(bucketMs) || bucketMs <= 0) return t0.getTime()
-
-    return Math.round(t0.getTime() / bucketMs) * bucketMs
-  }, [selectedBody, showTrails, t0])
+  const spec = useMemo(() => {
+    if (!showTrails || !selectedBody) return null
+    return resolveTrailWindow(
+      astronomyEngineProvider,
+      selectedBody,
+      baseCenterMs,
+      baseWindowDays,
+      TRAIL_STEP_HOURS[selectedBody],
+      { ensureConjunctions: showEvents },
+    )
+  }, [baseCenterMs, baseWindowDays, selectedBody, showEvents, showTrails])
 
   const analysis = useMemo(() => {
-    if (!showTrails || !selectedBody) return null
-    const windowDays = TRAIL_WINDOW_DAYS[selectedBody]
+    if (!spec || !selectedBody) return null
+    const windowDays = spec.windowDays
     const stepHours = TRAIL_STEP_HOURS[selectedBody]
     return getTrailAnalysis(
       astronomyEngineProvider,
       selectedBody,
-      trailCenterMs,
+      spec.centerMs,
       windowDays,
       stepHours,
       STATION_EPS_DEG_PER_DAY,
     )
-  }, [selectedBody, showTrails, trailCenterMs])
+  }, [selectedBody, spec])
 
   const trail = useMemo(() => {
     if (!analysis || !selectedBody) return null
@@ -155,22 +166,23 @@ export function Trails() {
         )
       })}
 
-      {trail.stationPoints.map((ev) => (
-        <mesh
-          key={`${ev.kind}-${Math.round(ev.timeMs)}`}
-          position={ev.position}
-          rotation={[0, 0, Math.PI / 4]}
-          renderOrder={3.7}
-        >
-          <boxGeometry args={[0.14, 0.14, 0.02]} />
-          <meshBasicMaterial
-            color={stationColor(ev.kind)}
-            transparent
-            opacity={0.95}
-            depthWrite={false}
-          />
-        </mesh>
-      ))}
+      {(!showEvents || eventKinds.stations) &&
+        trail.stationPoints.map((ev) => (
+          <mesh
+            key={`${ev.kind}-${Math.round(ev.timeMs)}`}
+            position={ev.position}
+            rotation={[0, 0, Math.PI / 4]}
+            renderOrder={3.7}
+          >
+            <boxGeometry args={[0.14, 0.14, 0.02]} />
+            <meshBasicMaterial
+              color={stationColor(ev.kind)}
+              transparent
+              opacity={0.95}
+              depthWrite={false}
+            />
+          </mesh>
+        ))}
     </group>
   )
 }

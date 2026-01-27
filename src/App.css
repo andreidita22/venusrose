@@ -16,9 +16,9 @@
 
 .controlBar {
   position: absolute;
-  left: 12px;
-  top: 12px;
-  right: 12px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
   max-width: 900px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -28,11 +28,22 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+.controlBar.collapsed {
+  max-width: 520px;
+  padding: 8px 10px;
+}
+
 .controlRow {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.compactMeta {
+  font-size: 11px;
+  opacity: 0.82;
+  font-variant-numeric: tabular-nums;
 }
 
 .controlLabel {
@@ -203,6 +214,86 @@
   font-size: 11px;
 }
 
+.eventRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eventNavButton {
+  appearance: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+  color: var(--app-fg);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.eventNavButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.eventNavButton:hover:not(:disabled) {
+  border-color: var(--button-hover-border);
+}
+
+.eventNavButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.eventChips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eventChip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--app-fg);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.eventChip:hover {
+  border-color: var(--button-hover-border);
+}
+
+.eventChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.eventChip.past {
+  opacity: 0.65;
+}
+
+.eventChip.next {
+  border-color: var(--link);
+  background: color-mix(in srgb, var(--input-bg) 70%, var(--link) 30%);
+}
+
+.eventChipLabel {
+  font-weight: 700;
+}
+
+.eventChipTime {
+  opacity: 0.85;
+}
+
 .selectedBodyHint {
   font-size: 12px;
   opacity: 0.7;
@@ -210,4 +301,31 @@
 
 .spacer {
   flex: 1;
+}
+
+@media (max-width: 720px) {
+  .controlBar {
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    padding: 8px 10px;
+  }
+
+  .controlRange {
+    width: 180px;
+  }
+
+  .controlButton {
+    padding: 9px 12px;
+  }
+
+  .controlInput,
+  .controlSelect {
+    padding: 8px 10px;
+  }
+
+  .controlToggle input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+  }
 }

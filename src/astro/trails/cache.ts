@@ -1,6 +1,9 @@
 import type { BodyId } from '../config'
 import type { BodyState, EphemerisProvider } from '../ephemeris/types'
+import { MS_PER_DAY } from '../math/time'
 import { unwrapRadians } from '../math/unwrap'
+import type { LruMap } from '../utils/lru'
+import { lruGet, lruSet } from '../utils/lru'
 import { makeSampleTimes, sampleBodyStates } from './sampling'
 import {
   computeDerivativeDegPerDay,
@@ -9,26 +12,6 @@ import {
   type MotionKind,
   type StationEvent,
 } from './retrograde'
-
-type LruMap<K, V> = Map<K, V>
-
-function lruGet<K, V>(map: LruMap<K, V>, key: K): V | undefined {
-  const value = map.get(key)
-  if (value === undefined) return undefined
-  map.delete(key)
-  map.set(key, value)
-  return value
-}
-
-function lruSet<K, V>(map: LruMap<K, V>, key: K, value: V, maxSize: number): void {
-  if (map.has(key)) map.delete(key)
-  map.set(key, value)
-  while (map.size > maxSize) {
-    const oldestKey = map.keys().next().value as K | undefined
-    if (oldestKey === undefined) break
-    map.delete(oldestKey)
-  }
-}
 
 const TIMES_CACHE_MAX = 24
 const STATES_CACHE_MAX = 64
@@ -48,6 +31,12 @@ export type TrailAnalysis = {
   motionAtPoints: readonly MotionKind[]
   stations: readonly StationEvent[]
   stationStates: readonly (StationEvent & { state: BodyState })[]
+}
+
+export function trailCenterMsFor(t0Ms: number, windowDays: number): number {
+  const bucketMs = windowDays * MS_PER_DAY * 0.25
+  if (!Number.isFinite(bucketMs) || bucketMs <= 0) return t0Ms
+  return Math.round(t0Ms / bucketMs) * bucketMs
 }
 
 export function getSampleTimes(centerMs: number, windowDays: number, stepHours: number): readonly Date[] {
@@ -126,4 +115,3 @@ export function getTrailAnalysis(
   lruSet(trailCache, key, out, TRAIL_CACHE_MAX)
   return out
 }
-

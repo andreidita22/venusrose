@@ -89,7 +89,7 @@ export function MoonExtras() {
           color={palette.labelText}
           anchorX="center"
           anchorY="middle"
-          outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
+          outlineColor={palette.labelOutlineBg}
           outlineWidth={0.02}
         >
           ☊
@@ -101,7 +101,7 @@ export function MoonExtras() {
           color={palette.labelText}
           anchorX="center"
           anchorY="middle"
-          outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
+          outlineColor={palette.labelOutlineBg}
           outlineWidth={0.02}
         >
           ☋

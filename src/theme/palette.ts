@@ -11,6 +11,7 @@ export type ScenePalette = {
   zodiacGlyph: string
   stemLine: string
   labelText: string
+  labelOutlineBg: string
   subtleText: string
 }
 
@@ -26,6 +27,7 @@ export const SCENE_PALETTE: Record<ThemeMode, ScenePalette> = {
     zodiacGlyph: '#e7edff',
     stemLine: '#b9c5ff',
     labelText: '#e7edff',
+    labelOutlineBg: '#050812',
     subtleText: '#8fa2d9',
   },
   light: {
@@ -39,7 +41,7 @@ export const SCENE_PALETTE: Record<ThemeMode, ScenePalette> = {
     zodiacGlyph: '#111827',
     stemLine: '#3b4a7a',
     labelText: '#111827',
+    labelOutlineBg: '#ffffff',
     subtleText: '#475569',
   },
 }
-

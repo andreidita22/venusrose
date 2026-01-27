@@ -8,6 +8,10 @@ export type ToggleKey = 'showZodiac' | 'showZoneRings'
 
 export type Toggles = Record<ToggleKey, boolean>
 
+export type EventKindKey = 'aspects' | 'stations' | 'maxElongation'
+
+export type EventKindToggles = Record<EventKindKey, boolean>
+
 export type TrailMode = 'wheel' | '3d'
 
 export type TimeStep = 1 | 6 | 24 | 168 | 720
@@ -39,6 +43,11 @@ export type AppState = {
   setShowDistanceBands: (showDistanceBands: boolean) => void
   showSynodic: boolean
   setShowSynodic: (showSynodic: boolean) => void
+  showEvents: boolean
+  setShowEvents: (showEvents: boolean) => void
+  eventKinds: EventKindToggles
+  setEventKind: (key: EventKindKey, value: boolean) => void
+  toggleEventKind: (key: EventKindKey) => void
   showTrails: boolean
   setShowTrails: (showTrails: boolean) => void
   trailMode: TrailMode
@@ -77,6 +86,17 @@ export const useAppStore = create<AppState>((set) => ({
   setShowDistanceBands: (showDistanceBands) => set({ showDistanceBands }),
   showSynodic: true,
   setShowSynodic: (showSynodic) => set({ showSynodic }),
+  showEvents: false,
+  setShowEvents: (showEvents) => set({ showEvents }),
+  eventKinds: {
+    aspects: true,
+    stations: true,
+    maxElongation: true,
+  },
+  setEventKind: (key, value) =>
+    set((state) => ({ eventKinds: { ...state.eventKinds, [key]: value } })),
+  toggleEventKind: (key) =>
+    set((state) => ({ eventKinds: { ...state.eventKinds, [key]: !state.eventKinds[key] } })),
   showTrails: true,
   setShowTrails: (showTrails) => set({ showTrails }),
   trailMode: 'wheel',
