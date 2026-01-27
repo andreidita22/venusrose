@@ -182,7 +182,7 @@ export function SynodicDial({ body, bodyState, sunState, t0, theme }: SynodicDia
           cx={DIAL_CX}
           cy={DIAL_CY}
           r={DIAL_R_CENTER}
-          fill={theme === 'dark' ? '#050812' : '#ffffff'}
+          fill={palette.labelOutlineBg}
           opacity={0.72}
         />
 

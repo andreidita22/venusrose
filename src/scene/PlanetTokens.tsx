@@ -19,6 +19,30 @@ import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
+const STEM_BASE_OPACITY = 0.85
+const UNFOCUSED_OPACITY = 0.22
+const OPAQUE_THRESHOLD = 0.999
+
+const TOKEN_SEGMENTS = 24
+const TOKEN_SELECTED_HALO_SCALE = 1.25
+const TOKEN_SELECTED_HALO_OPACITY = 0.22
+const TOKEN_SELECTED_HALO_SEGMENTS = 20
+
+const BILLBOARD_Z_OFFSET = 0.35
+
+const GLYPH_FONT_SIZE = 0.28
+const GLYPH_OUTLINE_WIDTH = 0.015
+
+const LAT_CUE_X = 0.34
+const LAT_CUE_FONT_SIZE = 0.2
+
+const LABEL_Y = -0.36
+const LABEL_FONT_SIZE = 0.22
+const LABEL_OUTLINE_WIDTH = 0.02
+
+const LAT_LABEL_Y = -0.62
+const LAT_LABEL_FONT_SIZE = 0.18
+
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x))
 }
@@ -88,7 +112,6 @@ export function PlanetTokens() {
             glyph={meta.glyph}
             label={meta.label}
             latLabel={`β ${formatSignedDegrees(latDeg, 1)}`}
-            theme={theme}
             palette={palette}
             stemOpacity={stemOpacity}
             cueOpacity={cueOpacity}
@@ -111,7 +134,6 @@ type PlanetTokenProps = {
   glyph: string
   label: string
   latLabel: string
-  theme: 'dark' | 'light'
   palette: typeof SCENE_PALETTE.dark
   stemOpacity: number
   cueOpacity: number
@@ -129,7 +151,6 @@ function PlanetToken({
   glyph,
   label,
   latLabel,
-  theme,
   palette,
   stemOpacity,
   cueOpacity,
@@ -143,7 +164,7 @@ function PlanetToken({
 
   const dimOthers = hasSelection && focusMode === 'fade'
   const isPrimary = selected || hovered
-  const focusOpacity = dimOthers ? (isPrimary ? 1 : 0.22) : 1
+  const focusOpacity = dimOthers ? (isPrimary ? 1 : UNFOCUSED_OPACITY) : 1
 
   const [x, y, z] = position
   const stemPoints = [
@@ -158,15 +179,25 @@ function PlanetToken({
         color={palette.stemLine}
         lineWidth={1}
         transparent
-        opacity={stemOpacity * 0.85 * focusOpacity}
+        opacity={stemOpacity * STEM_BASE_OPACITY * focusOpacity}
       />
       {selected ? (
-        <mesh position={position} scale={TOKEN_SELECTED_SCALE * 1.25} renderOrder={4.1}>
-          <sphereGeometry args={[TOKEN_RADIUS * 1.25, 20, 20]} />
+        <mesh
+          position={position}
+          scale={TOKEN_SELECTED_SCALE * TOKEN_SELECTED_HALO_SCALE}
+          renderOrder={4.1}
+        >
+          <sphereGeometry
+            args={[
+              TOKEN_RADIUS * TOKEN_SELECTED_HALO_SCALE,
+              TOKEN_SELECTED_HALO_SEGMENTS,
+              TOKEN_SELECTED_HALO_SEGMENTS,
+            ]}
+          />
           <meshBasicMaterial
             color={tokenColor}
             transparent
-            opacity={0.22}
+            opacity={TOKEN_SELECTED_HALO_OPACITY}
             depthWrite={false}
           />
         </mesh>
@@ -187,36 +218,36 @@ function PlanetToken({
           onSelect()
         }}
       >
-        <sphereGeometry args={[TOKEN_RADIUS, 24, 24]} />
+        <sphereGeometry args={[TOKEN_RADIUS, TOKEN_SEGMENTS, TOKEN_SEGMENTS]} />
         <meshStandardMaterial
           color={tokenColor}
           emissive={tokenColor}
           emissiveIntensity={selected ? 0.65 : 0.35}
           roughness={0.45}
           metalness={0.05}
-          transparent={focusOpacity < 0.999}
+          transparent={focusOpacity < OPAQUE_THRESHOLD}
           opacity={focusOpacity}
         />
       </mesh>
 
-      <Billboard position={[x, y, z + 0.35]} follow>
+      <Billboard position={[x, y, z + BILLBOARD_Z_OFFSET]} follow>
         <group>
           <Text
-            fontSize={0.28}
+            fontSize={GLYPH_FONT_SIZE}
             color={palette.labelText}
             fillOpacity={focusOpacity}
             anchorX="center"
             anchorY="middle"
-            outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
-            outlineWidth={0.015}
+            outlineColor={palette.labelOutlineBg}
+            outlineWidth={GLYPH_OUTLINE_WIDTH}
             depthTest={false}
           >
             {glyph}
           </Text>
           {showLatCue ? (
             <Text
-              position={[0.34, 0, 0]}
-              fontSize={0.2}
+              position={[LAT_CUE_X, 0, 0]}
+              fontSize={LAT_CUE_FONT_SIZE}
               color={palette.stemLine}
               anchorX="left"
               anchorY="middle"
@@ -228,14 +259,14 @@ function PlanetToken({
           ) : null}
           {showLabel ? (
             <Text
-              position={[0, -0.36, 0]}
-              fontSize={0.22}
+              position={[0, LABEL_Y, 0]}
+              fontSize={LABEL_FONT_SIZE}
               color={palette.labelText}
               fillOpacity={focusOpacity}
               anchorX="center"
               anchorY="top"
-              outlineColor={theme === 'dark' ? '#050812' : '#ffffff'}
-              outlineWidth={0.02}
+              outlineColor={palette.labelOutlineBg}
+              outlineWidth={LABEL_OUTLINE_WIDTH}
               depthTest={false}
             >
               {label}
@@ -243,8 +274,8 @@ function PlanetToken({
           ) : null}
           {showLabel ? (
             <Text
-              position={[0, -0.62, 0]}
-              fontSize={0.18}
+              position={[0, LAT_LABEL_Y, 0]}
+              fontSize={LAT_LABEL_FONT_SIZE}
               color={palette.subtleText}
               fillOpacity={focusOpacity}
               anchorX="center"
