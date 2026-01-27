@@ -16,9 +16,9 @@
 
 .controlBar {
   position: absolute;
-  left: 12px;
-  top: 12px;
-  right: 12px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
   max-width: 900px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -28,11 +28,22 @@
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+.controlBar.collapsed {
+  max-width: 520px;
+  padding: 8px 10px;
+}
+
 .controlRow {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.compactMeta {
+  font-size: 11px;
+  opacity: 0.82;
+  font-variant-numeric: tabular-nums;
 }
 
 .controlLabel {
@@ -210,4 +221,31 @@
 
 .spacer {
   flex: 1;
+}
+
+@media (max-width: 720px) {
+  .controlBar {
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    padding: 8px 10px;
+  }
+
+  .controlRange {
+    width: 180px;
+  }
+
+  .controlButton {
+    padding: 9px 12px;
+  }
+
+  .controlInput,
+  .controlSelect {
+    padding: 8px 10px;
+  }
+
+  .controlToggle input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+  }
 }

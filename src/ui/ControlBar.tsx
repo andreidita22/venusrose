@@ -80,9 +80,72 @@ export function ControlBar() {
 
   const scrubMax = useMemo(() => scrubRangeStepsForStep(timeStep), [timeStep])
 
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.innerWidth < 720
+  })
+
+  if (collapsed) {
+    return (
+      <div className="controlBar collapsed">
+        <div className="controlRow">
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => setCollapsed(false)}
+            title="Show controls"
+          >
+            Controls
+          </button>
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => {
+              setIsPlaying(false)
+              advanceTimeByHours(-timeStep)
+            }}
+            title={`Step −${formatStep(timeStep)}`}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="controlButton primary"
+            onClick={() => togglePlaying()}
+          >
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <button
+            type="button"
+            className="controlButton"
+            onClick={() => {
+              setIsPlaying(false)
+              advanceTimeByHours(timeStep)
+            }}
+            title={`Step +${formatStep(timeStep)}`}
+          >
+            +
+          </button>
+          <div className="compactMeta" title="UTC">
+            {formatUTCDateTimeLocal(t0)}
+            {selectedMeta ? ` · ${selectedMeta.glyph}` : ''}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="controlBar">
       <div className="controlRow">
+        <button
+          type="button"
+          className="controlButton"
+          onClick={() => setCollapsed(true)}
+          title="Collapse controls"
+        >
+          Hide
+        </button>
         <label className="controlLabel">
           UTC
           <input
