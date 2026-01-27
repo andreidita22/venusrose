@@ -11,10 +11,8 @@ import type { BodyState } from '../astro/ephemeris/types'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { degToRad, radToDeg } from '../astro/math/angles'
 import { MS_PER_DAY } from '../astro/math/time'
-import { unwrapRadians } from '../astro/math/unwrap'
 import { elongationRad, synodicPhaseRad } from '../astro/synodic'
-import { makeSampleTimes, sampleBodyStates } from '../astro/trails/sampling'
-import { computeDerivativeDegPerDay, motionFromDerivative, type MotionKind } from '../astro/trails/retrograde'
+import { getBodySamples, getTrailAnalysis } from '../astro/trails/cache'
 import type { ThemeMode } from '../theme/types'
 import { SCENE_PALETTE } from '../theme/palette'
 const DIAL_SIZE = 108
@@ -64,26 +62,26 @@ export function SynodicDial({ body, bodyState, sunState, t0, theme }: SynodicDia
   const conjKind = isNearConjunction ? (bodyState.distAu < sunState.distAu ? 'inferior' : 'superior') : null
 
   const sampled = useMemo((): { retroSegments: RetroSegment[]; peakMarkers: { x: number; y: number }[] } => {
-    const center = new Date(centerMs)
-    const times = makeSampleTimes(center, windowDays, stepHours)
-    const planetSamples = sampleBodyStates(astronomyEngineProvider, body, times)
-    const sunSamples = sampleBodyStates(astronomyEngineProvider, 'sun', times)
+    const analysis = getTrailAnalysis(
+      astronomyEngineProvider,
+      body,
+      centerMs,
+      windowDays,
+      stepHours,
+      STATION_EPS_DEG_PER_DAY,
+    )
 
-    const timesMs = planetSamples.map((s) => s.date.getTime())
-    const lon = planetSamples.map((s) => s.lonRad)
-    const lonU = unwrapRadians(lon)
-    const dLonDegPerDay = computeDerivativeDegPerDay(timesMs, lonU)
-    const motionAt: MotionKind[] = dLonDegPerDay.map((d) => motionFromDerivative(d, STATION_EPS_DEG_PER_DAY))
+    const sunSamples = getBodySamples(astronomyEngineProvider, 'sun', centerMs, windowDays, stepHours)
 
-    const phaseAt = planetSamples.map((s, i) => synodicPhaseRad(s.lonRad, sunSamples[i].lonRad))
-    const elongAt = planetSamples.map((s, i) => elongationRad(s.lonRad, sunSamples[i].lonRad))
+    const phaseAt = analysis.samples.map((s, i) => synodicPhaseRad(s.lonRad, sunSamples[i].lonRad))
+    const elongAt = analysis.samples.map((s, i) => elongationRad(s.lonRad, sunSamples[i].lonRad))
     const absElongAt = elongAt.map((e) => Math.abs(e))
 
     const retroSegments: RetroSegment[] = []
     let current: { x: number; y: number }[] = []
 
     for (let i = 0; i < phaseAt.length; i++) {
-      const isRetro = motionAt[i] === 'retrograde'
+      const isRetro = analysis.motionAtPoints[i] === 'retrograde'
       if (!isRetro) {
         if (current.length >= 2) retroSegments.push({ points: toPointsString(current) })
         current = []
