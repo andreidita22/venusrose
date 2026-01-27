@@ -1,15 +1,23 @@
 import { Line, Text } from '@react-three/drei'
 import { useMemo } from 'react'
 import { DoubleSide } from 'three'
+import { BODY_META } from '../astro/bodies'
 import { CHART_OUTER_RADIUS, ZODIAC } from '../astro/config'
+import { zodiacIndexFromLonRad } from '../astro/format'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
 export function ZodiacWedges() {
   const theme = useAppStore((s) => s.theme)
   const palette = SCENE_PALETTE[theme]
+  const selectedBody = useAppStore((s) => s.selectedBody)
+  const bodyStates = useAppStore((s) => s.bodyStates)
   const wedgeOpacity = theme === 'dark' ? 0.22 : 0.22
   const boundaryOpacity = theme === 'dark' ? 0.35 : 0.55
+
+  const selectedLonRad = selectedBody ? bodyStates[selectedBody]?.lonRad : null
+  const selectedSignIndex = selectedLonRad != null ? zodiacIndexFromLonRad(selectedLonRad) : null
+  const focusColor = selectedBody ? BODY_META[selectedBody].color : palette.zoneRing
 
   const wedges = useMemo(() => {
     const thetaLen = Math.PI / 6
@@ -51,10 +59,25 @@ export function ZodiacWedges() {
         <Line
           key={`b-${idx}`}
           points={points}
-          color={palette.zoneRing}
-          lineWidth={1.25}
+          color={
+            selectedSignIndex !== null &&
+            (idx === selectedSignIndex || idx === (selectedSignIndex + 1) % 12)
+              ? focusColor
+              : palette.zoneRing
+          }
+          lineWidth={
+            selectedSignIndex !== null &&
+            (idx === selectedSignIndex || idx === (selectedSignIndex + 1) % 12)
+              ? 2.2
+              : 1.25
+          }
           transparent
-          opacity={boundaryOpacity}
+          opacity={
+            selectedSignIndex !== null &&
+            (idx === selectedSignIndex || idx === (selectedSignIndex + 1) % 12)
+              ? 0.85
+              : boundaryOpacity
+          }
           depthWrite={false}
         />
       ))}
@@ -65,7 +88,11 @@ export function ZodiacWedges() {
             <meshBasicMaterial
               color={idx % 2 === 0 ? palette.zodiacWedgeA : palette.zodiacWedgeB}
               transparent
-              opacity={wedgeOpacity}
+              opacity={
+                selectedSignIndex !== null && idx === selectedSignIndex
+                  ? Math.min(0.55, wedgeOpacity + 0.18)
+                  : wedgeOpacity
+              }
               side={DoubleSide}
               depthWrite={false}
               polygonOffset
@@ -75,10 +102,11 @@ export function ZodiacWedges() {
           </mesh>
           <Text
             position={labelPos}
-            fontSize={0.33}
-            color={palette.zodiacGlyph}
+            fontSize={selectedSignIndex !== null && idx === selectedSignIndex ? 0.38 : 0.33}
+            color={selectedSignIndex !== null && idx === selectedSignIndex ? palette.labelText : palette.zodiacGlyph}
             anchorX="center"
             anchorY="middle"
+            depthTest={false}
           >
             {sign.glyph}
           </Text>

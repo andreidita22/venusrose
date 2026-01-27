@@ -12,6 +12,8 @@ export type TrailMode = 'wheel' | '3d'
 
 export type TimeStep = 1 | 6 | 24 | 168 | 720
 
+export type FocusMode = 'off' | 'fade' | 'solo'
+
 export type AppState = {
   t0: Date
   setT0: (t0: Date) => void
@@ -41,6 +43,8 @@ export type AppState = {
   setShowTrails: (showTrails: boolean) => void
   trailMode: TrailMode
   setTrailMode: (trailMode: TrailMode) => void
+  focusMode: FocusMode
+  setFocusMode: (focusMode: FocusMode) => void
   toggles: Toggles
   setToggle: (key: ToggleKey, value: boolean) => void
   toggle: (key: ToggleKey) => void
@@ -77,6 +81,8 @@ export const useAppStore = create<AppState>((set) => ({
   setShowTrails: (showTrails) => set({ showTrails }),
   trailMode: 'wheel',
   setTrailMode: (trailMode) => set({ trailMode }),
+  focusMode: 'fade',
+  setFocusMode: (focusMode) => set({ focusMode }),
   toggles: {
     showZodiac: true,
     showZoneRings: true,
