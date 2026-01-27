@@ -6,6 +6,7 @@ import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEng
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { getTrailAnalysis, trailCenterMsFor } from '../astro/trails/cache'
+import { resolveTrailWindow } from '../astro/trails/window'
 import type { MotionKind, StationEvent } from '../astro/trails/retrograde'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
@@ -62,28 +63,43 @@ export function Trails() {
   const t0 = useAppStore((s) => s.t0)
   const selectedBody = useAppStore((s) => s.selectedBody)
   const showTrails = useAppStore((s) => s.showTrails)
+  const showEvents = useAppStore((s) => s.showEvents)
   const trailMode = useAppStore((s) => s.trailMode)
   const theme = useAppStore((s) => s.theme)
   const palette = SCENE_PALETTE[theme]
 
-  const trailCenterMs = useMemo(() => {
-    if (!showTrails || !selectedBody) return t0.getTime()
-    return trailCenterMsFor(t0.getTime(), TRAIL_WINDOW_DAYS[selectedBody])
-  }, [selectedBody, showTrails, t0])
+  const t0Ms = t0.getTime()
+  const baseWindowDays = selectedBody ? TRAIL_WINDOW_DAYS[selectedBody] : 0
+  const baseCenterMs = useMemo(() => {
+    if (!showTrails || !selectedBody) return t0Ms
+    return trailCenterMsFor(t0Ms, baseWindowDays)
+  }, [baseWindowDays, selectedBody, showTrails, t0Ms])
+
+  const spec = useMemo(() => {
+    if (!showTrails || !selectedBody) return null
+    return resolveTrailWindow(
+      astronomyEngineProvider,
+      selectedBody,
+      baseCenterMs,
+      baseWindowDays,
+      TRAIL_STEP_HOURS[selectedBody],
+      { ensureConjunctions: showEvents },
+    )
+  }, [baseCenterMs, baseWindowDays, selectedBody, showEvents, showTrails])
 
   const analysis = useMemo(() => {
-    if (!showTrails || !selectedBody) return null
-    const windowDays = TRAIL_WINDOW_DAYS[selectedBody]
+    if (!spec || !selectedBody) return null
+    const windowDays = spec.windowDays
     const stepHours = TRAIL_STEP_HOURS[selectedBody]
     return getTrailAnalysis(
       astronomyEngineProvider,
       selectedBody,
-      trailCenterMs,
+      spec.centerMs,
       windowDays,
       stepHours,
       STATION_EPS_DEG_PER_DAY,
     )
-  }, [selectedBody, showTrails, trailCenterMs])
+  }, [selectedBody, spec])
 
   const trail = useMemo(() => {
     if (!analysis || !selectedBody) return null

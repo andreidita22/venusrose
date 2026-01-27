@@ -8,6 +8,7 @@ import { formatSignedDegrees, formatZodiacPosition } from '../astro/format'
 import { radToDeg } from '../astro/math/angles'
 import { MS_PER_HOUR } from '../astro/math/time'
 import { trailCenterMsFor } from '../astro/trails/cache'
+import { resolveTrailWindow } from '../astro/trails/window'
 import type { FocusMode, TimeStep } from '../state/store'
 import { useAppStore } from '../state/store'
 import { formatUTCDateTimeLocal, parseUTCDateTimeLocal } from './datetime'
@@ -81,21 +82,35 @@ export function ControlBar() {
   const closeness = selectedRange && selectedState ? distanceCloseness(selectedRange, selectedState.distAu) : null
   const sunState = bodyStates.sun
 
-  const eventsCenterMs = useMemo(() => {
-    if (!showEvents || !selectedBody) return t0.getTime()
-    return trailCenterMsFor(t0.getTime(), TRAIL_WINDOW_DAYS[selectedBody])
-  }, [selectedBody, showEvents, t0])
+  const t0Ms = t0.getTime()
+  const baseEventsWindowDays = selectedBody ? TRAIL_WINDOW_DAYS[selectedBody] : 0
+  const eventsBaseCenterMs = useMemo(() => {
+    if (!showEvents || !selectedBody) return t0Ms
+    return trailCenterMsFor(t0Ms, baseEventsWindowDays)
+  }, [baseEventsWindowDays, selectedBody, showEvents, t0Ms])
+
+  const eventsSpec = useMemo(() => {
+    if (!showEvents || !selectedBody) return null
+    return resolveTrailWindow(
+      astronomyEngineProvider,
+      selectedBody,
+      eventsBaseCenterMs,
+      baseEventsWindowDays,
+      TRAIL_STEP_HOURS[selectedBody],
+      { ensureConjunctions: true },
+    )
+  }, [baseEventsWindowDays, eventsBaseCenterMs, selectedBody, showEvents])
 
   const synodicEvents = useMemo(() => {
-    if (!showEvents || !selectedBody) return null
+    if (!showEvents || !selectedBody || !eventsSpec) return null
     return computeSynodicEvents(
       astronomyEngineProvider,
       selectedBody,
-      new Date(eventsCenterMs),
-      TRAIL_WINDOW_DAYS[selectedBody],
+      new Date(eventsSpec.centerMs),
+      eventsSpec.windowDays,
       TRAIL_STEP_HOURS[selectedBody],
     )
-  }, [eventsCenterMs, selectedBody, showEvents])
+  }, [eventsSpec, selectedBody, showEvents])
 
   const [scrubSteps, setScrubSteps] = useState(0)
   const scrubAnchorMsRef = useRef<number | null>(null)
@@ -414,7 +429,6 @@ export function ControlBar() {
                 {showEvents && synodicEvents && synodicEvents.length > 0 ? (
                   <div className="eventChips" aria-label="Synodic events">
                     {(() => {
-                      const t0Ms = t0.getTime()
                       const nextIndex = synodicEvents.findIndex((ev) => ev.timeMs >= t0Ms)
                       return synodicEvents.map((ev, idx) => {
                         const isNext = nextIndex >= 0 && idx === nextIndex

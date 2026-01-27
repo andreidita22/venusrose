@@ -7,6 +7,7 @@ import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEng
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { getTrailAnalysis, trailCenterMsFor } from '../astro/trails/cache'
+import { resolveTrailWindow } from '../astro/trails/window'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
@@ -33,32 +34,45 @@ export function EventMarkers() {
   const windowDays = selectedBody ? TRAIL_WINDOW_DAYS[selectedBody] : 0
   const stepHours = selectedBody ? TRAIL_STEP_HOURS[selectedBody] : 0
 
-  const centerMs = useMemo(() => {
-    if (!showEvents || !selectedBody) return t0.getTime()
-    return trailCenterMsFor(t0.getTime(), windowDays)
-  }, [selectedBody, showEvents, t0, windowDays])
+  const t0Ms = t0.getTime()
+  const baseCenterMs = useMemo(() => {
+    if (!showEvents || !selectedBody) return t0Ms
+    return trailCenterMsFor(t0Ms, windowDays)
+  }, [selectedBody, showEvents, t0Ms, windowDays])
+
+  const spec = useMemo(() => {
+    if (!showEvents || !selectedBody) return null
+    return resolveTrailWindow(
+      astronomyEngineProvider,
+      selectedBody,
+      baseCenterMs,
+      windowDays,
+      stepHours,
+      { ensureConjunctions: true },
+    )
+  }, [baseCenterMs, selectedBody, showEvents, stepHours, windowDays])
 
   const analysis = useMemo(() => {
-    if (!showEvents || !selectedBody) return null
+    if (!spec || !selectedBody) return null
     return getTrailAnalysis(
       astronomyEngineProvider,
       selectedBody,
-      centerMs,
-      windowDays,
+      spec.centerMs,
+      spec.windowDays,
       stepHours,
       STATION_EPS_DEG_PER_DAY,
     )
-  }, [centerMs, selectedBody, showEvents, stepHours, windowDays])
+  }, [selectedBody, spec, stepHours])
 
   const markers = useMemo(() => {
-    if (!showEvents || !selectedBody || !analysis) return null
+    if (!showEvents || !selectedBody || !analysis || !spec) return null
 
     const baseRadius = scaleRadiusAUToScene(analysis.current.distAu)
     const events = computeSynodicEvents(
       astronomyEngineProvider,
       selectedBody,
-      new Date(centerMs),
-      windowDays,
+      new Date(spec.centerMs),
+      spec.windowDays,
       stepHours,
     )
 
@@ -87,7 +101,7 @@ export function EventMarkers() {
 
         return { ...ev, position, color }
       })
-  }, [analysis, centerMs, selectedBody, showEvents, showTrails, stepHours, trailMode, windowDays])
+  }, [analysis, selectedBody, showEvents, showTrails, spec, stepHours, trailMode])
 
   if (!markers || markers.length === 0 || !selectedBody) return null
 
@@ -121,4 +135,3 @@ export function EventMarkers() {
     </group>
   )
 }
-
