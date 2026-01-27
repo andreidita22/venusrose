@@ -45,6 +45,19 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
   return null
 }
 
+function SceneControls({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl | null> }) {
+  const invalidate = useThree((s) => s.invalidate)
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enablePan={false}
+      maxPolarAngle={MathUtils.degToRad(MAX_TILT_DEG)}
+      minPolarAngle={0}
+      onChange={() => invalidate()}
+    />
+  )
+}
+
 export function SceneRoot() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
   const toggles = useAppStore((s) => s.toggles)
@@ -55,8 +68,11 @@ export function SceneRoot() {
   return (
     <Canvas
       className="canvas"
+      frameloop="demand"
       orthographic
       camera={{ position: [0, 18, 18], zoom: 60, near: 0.1, far: 200 }}
+      dpr={[1, 1.75]}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       onPointerMissed={() => setSelectedBody(null)}
     >
       <color attach="background" args={[palette.canvasBg]} />
@@ -74,12 +90,7 @@ export function SceneRoot() {
         <PlanetTokens />
       </group>
 
-      <OrbitControls
-        ref={controlsRef}
-        enablePan={false}
-        maxPolarAngle={MathUtils.degToRad(MAX_TILT_DEG)}
-        minPolarAngle={0}
-      />
+      <SceneControls controlsRef={controlsRef} />
       <CameraRig controlsRef={controlsRef} />
     </Canvas>
   )
