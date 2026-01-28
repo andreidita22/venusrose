@@ -30,8 +30,6 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform float uOpacity;
   uniform float uTerminatorSoftness;
 
-  float saturate(float x) { return clamp(x, 0.0, 1.0); }
-
   void main() {
     vec3 nL = normalize(vNormalL);
     vec3 nW = normalize(vNormalW);
@@ -55,7 +53,7 @@ const FRAGMENT_SHADER = /* glsl */ `
 
     // Add a subtle camera-space rim so the Moon stays readable even near new moon.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
-    float rim = pow(1.0 - saturate(dot(nW, toCam)), 2.0);
+    float rim = pow(1.0 - clamp(dot(nW, toCam), 0.0, 1.0), 2.0);
     color = mix(color, uLitColor, rim * 0.06);
 
     gl_FragColor = vec4(color, uOpacity);
