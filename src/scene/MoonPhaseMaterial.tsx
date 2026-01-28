@@ -3,8 +3,11 @@ import { Color, Vector3 } from 'three'
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec3 vNormalW;
+  varying vec3 vWorldPos;
 
   void main() {
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
     vNormalW = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
@@ -14,6 +17,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
   varying vec3 vNormalW;
+  varying vec3 vWorldPos;
 
   uniform vec3 uLightDir;
   uniform vec3 uViewDir;
@@ -43,7 +47,12 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec3 color = baseColor * brightness;
 
     // Slightly darken the far hemisphere, but keep it visible.
-    color *= mix(0.22, 1.0, front);
+    color *= mix(0.5, 1.0, front);
+
+    // Add a subtle camera-space rim so the Moon stays readable even near new moon.
+    vec3 toCam = normalize(cameraPosition - vWorldPos);
+    float rim = pow(1.0 - saturate(dot(n, toCam)), 2.0);
+    color = mix(color, uLitColor, rim * 0.06);
 
     gl_FragColor = vec4(color, uOpacity);
   }

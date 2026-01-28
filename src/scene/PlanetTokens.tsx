@@ -84,8 +84,9 @@ export function PlanetTokens() {
   }, [sunState])
 
   const moonDarkColor = useMemo(() => {
-    return new Color(theme === 'dark' ? palette.planeFill : '#111827')
-  }, [palette.planeFill, theme])
+    if (theme !== 'dark') return new Color('#111827')
+    return new Color(palette.planeFill).lerp(new Color(palette.planeRim), 0.35)
+  }, [palette.planeFill, palette.planeRim, theme])
 
   const stemOpacity = stemOpacityForTilt(tiltDeg)
   const cueOpacity = 1 - stemOpacity
