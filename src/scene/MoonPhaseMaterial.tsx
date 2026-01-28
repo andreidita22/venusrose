@@ -2,14 +2,12 @@ import { useMemo } from 'react'
 import { Color, Vector3 } from 'three'
 
 const VERTEX_SHADER = /* glsl */ `
-  varying vec3 vNormalL;
   varying vec3 vNormalW;
   varying vec3 vWorldPos;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
-    vNormalL = normalize(normal);
     vNormalW = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
@@ -18,7 +16,6 @@ const VERTEX_SHADER = /* glsl */ `
 const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
-  varying vec3 vNormalL;
   varying vec3 vNormalW;
   varying vec3 vWorldPos;
 
@@ -26,40 +23,32 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uViewDir;
   uniform vec3 uLitColor;
   uniform vec3 uDarkColor;
-  uniform float uPhase;
   uniform float uAmbient;
   uniform float uOpacity;
   uniform float uTerminatorSoftness;
 
   void main() {
-    vec3 nL = normalize(vNormalL);
     vec3 nW = normalize(vNormalW);
     vec3 l = normalize(uLightDir);
     vec3 v = normalize(uViewDir);
 
-    float sunDot = dot(nL, l);
-    float viewDot = dot(nL, v);
+    float sunDot = dot(nW, l);
+    float viewDot = dot(nW, v);
 
-    // Lit side (sun-facing) with phase-driven threshold.
-    float phase = clamp(uPhase, 0.0, 1.0);
-    float threshold = 1.0 - 2.0 * phase; // 0 -> 1 (new), 1 -> -1 (full)
-    float lit = smoothstep(threshold - uTerminatorSoftness, threshold + uTerminatorSoftness, sunDot);
-    float visible = smoothstep(0.0, 0.04, viewDot);
+    float sunLit = smoothstep(0.0, uTerminatorSoftness, sunDot);
+    float front = smoothstep(0.0, 0.04, viewDot);
+    float mask = sunLit * front;
 
-    vec3 baseColor = mix(uDarkColor, uLitColor, lit);
-    float brightness = mix(uAmbient, 1.0, lit);
-    vec3 color = baseColor * brightness;
-
-    // Keep the far hemisphere dark; only shade the front half.
-    vec3 backColor = uDarkColor * uAmbient;
-    color = mix(backColor, color, visible);
+    vec3 dark = uDarkColor * uAmbient;
+    vec3 litC = uLitColor;
+    vec3 color = mix(dark, litC, mask);
 
     // Add a subtle camera-space rim so the Moon stays readable near new moon.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
     float rim = pow(1.0 - clamp(dot(nW, toCam), 0.0, 1.0), 2.0);
-    color = mix(color, uLitColor, rim * 0.06);
+    float alpha = uOpacity * max(mask, rim * 0.10);
 
-    gl_FragColor = vec4(color, uOpacity);
+    gl_FragColor = vec4(color, alpha);
   }
 `
 
@@ -68,7 +57,6 @@ export type MoonPhaseMaterialProps = {
   viewDir: [number, number, number]
   litColor: Color
   darkColor: Color
-  phase: number
   opacity: number
   ambient?: number
   terminatorSoftness?: number
@@ -79,7 +67,6 @@ export function MoonPhaseMaterial({
   viewDir,
   litColor,
   darkColor,
-  phase,
   opacity,
   ambient = 0.14,
   terminatorSoftness = 0.035,
@@ -90,19 +77,19 @@ export function MoonPhaseMaterial({
       uViewDir: { value: new Vector3(viewDir[0], viewDir[1], viewDir[2]).normalize() },
       uLitColor: { value: litColor.clone() },
       uDarkColor: { value: darkColor.clone() },
-      uPhase: { value: phase },
       uAmbient: { value: ambient },
       uOpacity: { value: opacity },
       uTerminatorSoftness: { value: terminatorSoftness },
     }
-  }, [ambient, darkColor, lightDir, litColor, opacity, phase, terminatorSoftness, viewDir])
+  }, [ambient, darkColor, lightDir, litColor, opacity, terminatorSoftness, viewDir])
 
   return (
     <shaderMaterial
       vertexShader={VERTEX_SHADER}
       fragmentShader={FRAGMENT_SHADER}
       uniforms={uniforms}
-      transparent={opacity < 0.999}
+      transparent
+      depthWrite={false}
     />
   )
 }

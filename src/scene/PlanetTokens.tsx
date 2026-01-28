@@ -17,8 +17,6 @@ import { eclipticToScenePosition, eclipticUnitVector } from '../astro/math/eclip
 import { radToDeg } from '../astro/math/angles'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { useAppStore } from '../state/store'
-import { moonIlluminationFraction } from '../astro/moon/phase'
-import { elongationRad } from '../astro/synodic'
 import { SCENE_PALETTE } from '../theme/palette'
 import { MoonPhaseMaterial } from './MoonPhaseMaterial'
 
@@ -45,6 +43,11 @@ const LABEL_OUTLINE_WIDTH = 0.02
 
 const LAT_LABEL_Y = -0.62
 const LAT_LABEL_FONT_SIZE = 0.18
+
+function rotateDirToWorld([x, y, z]: [number, number, number]): [number, number, number] {
+  // SceneRoot rotates the whole chart by -90° around X: (x, y, z) -> (x, z, -y)
+  return [x, z, -y]
+}
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x))
@@ -119,22 +122,24 @@ export function PlanetTokens() {
               lightDir: [number, number, number]
               viewDir: [number, number, number]
               darkColor: Color
-              phase: number
             }
           | null = null
 
-        if (body === 'moon' && sunVecAu && sunState) {
+        if (body === 'moon' && sunVecAu) {
           const [ux, uy, uz] = eclipticUnitVector(state.lonRad, state.latRad)
           const mx = ux * state.distAu
           const my = uy * state.distAu
           const mz = uz * state.distAu
-          const elong = elongationRad(state.lonRad, sunState.lonRad)
-          const phase = moonIlluminationFraction(Math.abs(elong))
+          const lightLocal: [number, number, number] = [
+            sunVecAu[0] - mx,
+            sunVecAu[1] - my,
+            sunVecAu[2] - mz,
+          ]
+          const viewLocal: [number, number, number] = [-mx, -my, -mz]
           moonPhase = {
-            lightDir: [sunVecAu[0] - mx, sunVecAu[1] - my, sunVecAu[2] - mz],
-            viewDir: [-mx, -my, -mz],
+            lightDir: rotateDirToWorld(lightLocal),
+            viewDir: rotateDirToWorld(viewLocal),
             darkColor: moonDarkColor,
-            phase,
           }
           emissiveIntensity = isSelected ? 0.12 : 0.05
         }
@@ -178,7 +183,7 @@ type PlanetTokenProps = {
   accentColor: Color
   emissiveIntensity: number
   moonPhase:
-    | { lightDir: [number, number, number]; viewDir: [number, number, number]; darkColor: Color; phase: number }
+    | { lightDir: [number, number, number]; viewDir: [number, number, number]; darkColor: Color }
     | null
   glyph: string
   label: string
@@ -278,7 +283,6 @@ function PlanetToken({
             viewDir={moonPhase.viewDir}
             litColor={accentColor}
             darkColor={moonPhase.darkColor}
-            phase={moonPhase.phase}
             opacity={focusOpacity}
           />
         ) : (
