@@ -26,6 +26,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uViewDir;
   uniform vec3 uLitColor;
   uniform vec3 uDarkColor;
+  uniform float uPhase;
   uniform float uAmbient;
   uniform float uOpacity;
   uniform float uTerminatorSoftness;
@@ -39,17 +40,19 @@ const FRAGMENT_SHADER = /* glsl */ `
     float sunDot = dot(nL, l);
     float viewDot = dot(nL, v);
 
-    // Lit side (sun-facing) and visible side (earth-facing).
-    float lit = smoothstep(-uTerminatorSoftness, uTerminatorSoftness, sunDot);
+    // Lit side (sun-facing) with phase-driven threshold.
+    float phase = clamp(uPhase, 0.0, 1.0);
+    float threshold = 1.0 - 2.0 * phase; // 0 -> 1 (new), 1 -> -1 (full)
+    float lit = smoothstep(threshold - uTerminatorSoftness, threshold + uTerminatorSoftness, sunDot);
     float visible = smoothstep(0.0, 0.04, viewDot);
-    float litVisible = lit * visible;
 
-    vec3 baseColor = mix(uDarkColor, uLitColor, litVisible);
-    float brightness = mix(uAmbient, 1.0, litVisible);
+    vec3 baseColor = mix(uDarkColor, uLitColor, lit);
+    float brightness = mix(uAmbient, 1.0, lit);
     vec3 color = baseColor * brightness;
 
-    // Keep the far hemisphere darker so the sphere reads as 3D.
-    color *= mix(0.18, 1.0, visible);
+    // Keep the far hemisphere dark; only shade the front half.
+    vec3 backColor = uDarkColor * uAmbient;
+    color = mix(backColor, color, visible);
 
     // Add a subtle camera-space rim so the Moon stays readable near new moon.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
@@ -65,6 +68,7 @@ export type MoonPhaseMaterialProps = {
   viewDir: [number, number, number]
   litColor: Color
   darkColor: Color
+  phase: number
   opacity: number
   ambient?: number
   terminatorSoftness?: number
@@ -75,6 +79,7 @@ export function MoonPhaseMaterial({
   viewDir,
   litColor,
   darkColor,
+  phase,
   opacity,
   ambient = 0.14,
   terminatorSoftness = 0.035,
@@ -85,11 +90,12 @@ export function MoonPhaseMaterial({
       uViewDir: { value: new Vector3(viewDir[0], viewDir[1], viewDir[2]).normalize() },
       uLitColor: { value: litColor.clone() },
       uDarkColor: { value: darkColor.clone() },
+      uPhase: { value: phase },
       uAmbient: { value: ambient },
       uOpacity: { value: opacity },
       uTerminatorSoftness: { value: terminatorSoftness },
     }
-  }, [ambient, darkColor, lightDir, litColor, opacity, terminatorSoftness, viewDir])
+  }, [ambient, darkColor, lightDir, litColor, opacity, phase, terminatorSoftness, viewDir])
 
   return (
     <shaderMaterial
