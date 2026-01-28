@@ -13,13 +13,12 @@ import {
 import type { BodyState } from '../astro/ephemeris/types'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { formatSignedDegrees } from '../astro/format'
-import { eclipticToScenePosition } from '../astro/math/ecliptic'
+import { eclipticToScenePosition, eclipticUnitVector } from '../astro/math/ecliptic'
 import { radToDeg } from '../astro/math/angles'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
-import { moonIlluminationFraction } from '../astro/moon/phase'
-import { elongationRad } from '../astro/synodic'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
+import { MoonPhaseMaterial } from './MoonPhaseMaterial'
 
 const STEM_BASE_OPACITY = 0.85
 const UNFOCUSED_OPACITY = 0.22
@@ -78,6 +77,15 @@ export function PlanetTokens() {
   }, [bodyStates, setBodyStates])
 
   const sunState = bodyStates.sun
+  const sunVecAu = useMemo((): [number, number, number] | null => {
+    if (!sunState) return null
+    const [ux, uy, uz] = eclipticUnitVector(sunState.lonRad, sunState.latRad)
+    return [ux * sunState.distAu, uy * sunState.distAu, uz * sunState.distAu]
+  }, [sunState])
+
+  const moonDarkColor = useMemo(() => {
+    return new Color(theme === 'dark' ? palette.planeFill : '#111827')
+  }, [palette.planeFill, theme])
 
   const stemOpacity = stemOpacityForTilt(tiltDeg)
   const cueOpacity = 1 - stemOpacity
@@ -101,14 +109,23 @@ export function PlanetTokens() {
 
         const isSelected = selectedBody === body
         const accentColor = new Color(meta.color)
-        let tokenColor = accentColor
+        const tokenColor = accentColor
         let emissiveIntensity = isSelected ? 0.65 : 0.35
+        let moonPhase:
+          | { lightDir: [number, number, number]; viewDir: [number, number, number]; darkColor: Color }
+          | null = null
 
-        if (body === 'moon' && sunState) {
-          const phase = moonIlluminationFraction(elongationRad(state.lonRad, sunState.lonRad))
-          const moonDark = new Color(theme === 'dark' ? palette.planeFill : '#111827')
-          tokenColor = moonDark.lerp(accentColor, phase)
-          emissiveIntensity = (isSelected ? 0.15 : 0.05) + (isSelected ? 0.55 : 0.4) * phase
+        if (body === 'moon' && sunVecAu) {
+          const [ux, uy, uz] = eclipticUnitVector(state.lonRad, state.latRad)
+          const mx = ux * state.distAu
+          const my = uy * state.distAu
+          const mz = uz * state.distAu
+          moonPhase = {
+            lightDir: [sunVecAu[0] - mx, sunVecAu[1] - my, sunVecAu[2] - mz],
+            viewDir: [-mx, -my, -mz],
+            darkColor: moonDarkColor,
+          }
+          emissiveIntensity = isSelected ? 0.12 : 0.05
         }
 
         const latDeg = radToDeg(state.latRad)
@@ -124,6 +141,7 @@ export function PlanetTokens() {
             tokenColor={tokenColor}
             accentColor={accentColor}
             emissiveIntensity={emissiveIntensity}
+            moonPhase={moonPhase}
             glyph={meta.glyph}
             label={meta.label}
             latLabel={`β ${formatSignedDegrees(latDeg, 1)}`}
@@ -148,6 +166,7 @@ type PlanetTokenProps = {
   tokenColor: Color
   accentColor: Color
   emissiveIntensity: number
+  moonPhase: { lightDir: [number, number, number]; viewDir: [number, number, number]; darkColor: Color } | null
   glyph: string
   label: string
   latLabel: string
@@ -167,6 +186,7 @@ function PlanetToken({
   tokenColor,
   accentColor,
   emissiveIntensity,
+  moonPhase,
   glyph,
   label,
   latLabel,
@@ -238,15 +258,25 @@ function PlanetToken({
         }}
       >
         <sphereGeometry args={[TOKEN_RADIUS, TOKEN_SEGMENTS, TOKEN_SEGMENTS]} />
-        <meshStandardMaterial
-          color={tokenColor}
-          emissive={tokenColor}
-          emissiveIntensity={emissiveIntensity}
-          roughness={0.45}
-          metalness={0.05}
-          transparent={focusOpacity < OPAQUE_THRESHOLD}
-          opacity={focusOpacity}
-        />
+        {moonPhase ? (
+          <MoonPhaseMaterial
+            lightDir={moonPhase.lightDir}
+            viewDir={moonPhase.viewDir}
+            litColor={accentColor}
+            darkColor={moonPhase.darkColor}
+            opacity={focusOpacity}
+          />
+        ) : (
+          <meshStandardMaterial
+            color={tokenColor}
+            emissive={tokenColor}
+            emissiveIntensity={emissiveIntensity}
+            roughness={0.45}
+            metalness={0.05}
+            transparent={focusOpacity < OPAQUE_THRESHOLD}
+            opacity={focusOpacity}
+          />
+        )}
       </mesh>
 
       <Billboard position={[x, y, z + BILLBOARD_Z_OFFSET]} follow>
