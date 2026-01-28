@@ -39,19 +39,19 @@ const FRAGMENT_SHADER = /* glsl */ `
     float sunDot = dot(nL, l);
     float viewDot = dot(nL, v);
 
+    // Lit side (sun-facing) and visible side (earth-facing).
     float lit = smoothstep(-uTerminatorSoftness, uTerminatorSoftness, sunDot);
+    float visible = smoothstep(0.0, 0.04, viewDot);
+    float litVisible = lit * visible;
 
-    // Dim the far hemisphere (away from Earth) so phase remains "geocentric" even if the camera orbits.
-    float front = smoothstep(0.0, 0.04, viewDot);
-
-    vec3 baseColor = mix(uDarkColor, uLitColor, lit);
-    float brightness = mix(uAmbient, 1.0, lit);
+    vec3 baseColor = mix(uDarkColor, uLitColor, litVisible);
+    float brightness = mix(uAmbient, 1.0, litVisible);
     vec3 color = baseColor * brightness;
 
-    // Slightly darken the far hemisphere, but keep it visible.
-    color *= mix(0.5, 1.0, front);
+    // Keep the far hemisphere darker so the sphere reads as 3D.
+    color *= mix(0.18, 1.0, visible);
 
-    // Add a subtle camera-space rim so the Moon stays readable even near new moon.
+    // Add a subtle camera-space rim so the Moon stays readable near new moon.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
     float rim = pow(1.0 - clamp(dot(nW, toCam), 0.0, 1.0), 2.0);
     color = mix(color, uLitColor, rim * 0.06);
