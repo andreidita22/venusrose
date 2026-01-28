@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 import { Color, Vector3 } from 'three'
 
 const VERTEX_SHADER = /* glsl */ `
+  varying vec3 vNormalL;
   varying vec3 vNormalW;
   varying vec3 vWorldPos;
 
   void main() {
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
+    vNormalL = normalize(normal);
     vNormalW = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
@@ -16,6 +18,7 @@ const VERTEX_SHADER = /* glsl */ `
 const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
 
+  varying vec3 vNormalL;
   varying vec3 vNormalW;
   varying vec3 vWorldPos;
 
@@ -30,12 +33,13 @@ const FRAGMENT_SHADER = /* glsl */ `
   float saturate(float x) { return clamp(x, 0.0, 1.0); }
 
   void main() {
-    vec3 n = normalize(vNormalW);
+    vec3 nL = normalize(vNormalL);
+    vec3 nW = normalize(vNormalW);
     vec3 l = normalize(uLightDir);
     vec3 v = normalize(uViewDir);
 
-    float sunDot = dot(n, l);
-    float viewDot = dot(n, v);
+    float sunDot = dot(nL, l);
+    float viewDot = dot(nL, v);
 
     float lit = smoothstep(-uTerminatorSoftness, uTerminatorSoftness, sunDot);
 
@@ -51,7 +55,7 @@ const FRAGMENT_SHADER = /* glsl */ `
 
     // Add a subtle camera-space rim so the Moon stays readable even near new moon.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
-    float rim = pow(1.0 - saturate(dot(n, toCam)), 2.0);
+    float rim = pow(1.0 - saturate(dot(nW, toCam)), 2.0);
     color = mix(color, uLitColor, rim * 0.06);
 
     gl_FragColor = vec4(color, uOpacity);

@@ -245,6 +245,7 @@ function PlanetToken({
       <mesh
         position={position}
         scale={selected ? TOKEN_SELECTED_SCALE : 1}
+        renderOrder={4}
         onPointerOver={(e) => {
           e.stopPropagation()
           setHovered(true)
