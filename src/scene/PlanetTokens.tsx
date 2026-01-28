@@ -16,6 +16,8 @@ import { formatSignedDegrees } from '../astro/format'
 import { eclipticToScenePosition } from '../astro/math/ecliptic'
 import { radToDeg } from '../astro/math/angles'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
+import { moonIlluminationFraction } from '../astro/moon/phase'
+import { elongationRad } from '../astro/synodic'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
 
@@ -75,6 +77,8 @@ export function PlanetTokens() {
     setBodyStates(bodyStates)
   }, [bodyStates, setBodyStates])
 
+  const sunState = bodyStates.sun
+
   const stemOpacity = stemOpacityForTilt(tiltDeg)
   const cueOpacity = 1 - stemOpacity
 
@@ -96,7 +100,16 @@ export function PlanetTokens() {
         )
 
         const isSelected = selectedBody === body
-        const tokenColor = new Color(meta.color)
+        const accentColor = new Color(meta.color)
+        let tokenColor = accentColor
+        let emissiveIntensity = isSelected ? 0.65 : 0.35
+
+        if (body === 'moon' && sunState) {
+          const phase = moonIlluminationFraction(elongationRad(state.lonRad, sunState.lonRad))
+          const moonDark = new Color(theme === 'dark' ? palette.planeFill : '#111827')
+          tokenColor = moonDark.lerp(accentColor, phase)
+          emissiveIntensity = (isSelected ? 0.15 : 0.05) + (isSelected ? 0.55 : 0.4) * phase
+        }
 
         const latDeg = radToDeg(state.latRad)
         const showLatCue = Math.abs(latDeg) >= LAT_CUE_MIN_ABS_DEG && cueOpacity > 0.001
@@ -109,6 +122,8 @@ export function PlanetTokens() {
             focusMode={focusMode}
             position={pos}
             tokenColor={tokenColor}
+            accentColor={accentColor}
+            emissiveIntensity={emissiveIntensity}
             glyph={meta.glyph}
             label={meta.label}
             latLabel={`β ${formatSignedDegrees(latDeg, 1)}`}
@@ -131,6 +146,8 @@ type PlanetTokenProps = {
   focusMode: 'off' | 'fade' | 'solo'
   position: [number, number, number]
   tokenColor: Color
+  accentColor: Color
+  emissiveIntensity: number
   glyph: string
   label: string
   latLabel: string
@@ -148,6 +165,8 @@ function PlanetToken({
   focusMode,
   position,
   tokenColor,
+  accentColor,
+  emissiveIntensity,
   glyph,
   label,
   latLabel,
@@ -195,7 +214,7 @@ function PlanetToken({
             ]}
           />
           <meshBasicMaterial
-            color={tokenColor}
+            color={accentColor}
             transparent
             opacity={TOKEN_SELECTED_HALO_OPACITY}
             depthWrite={false}
@@ -222,7 +241,7 @@ function PlanetToken({
         <meshStandardMaterial
           color={tokenColor}
           emissive={tokenColor}
-          emissiveIntensity={selected ? 0.65 : 0.35}
+          emissiveIntensity={emissiveIntensity}
           roughness={0.45}
           metalness={0.05}
           transparent={focusOpacity < OPAQUE_THRESHOLD}
