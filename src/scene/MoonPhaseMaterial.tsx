@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Color, Vector3 } from 'three'
 
 const VERTEX_SHADER = /* glsl */ `
@@ -73,15 +73,48 @@ export function MoonPhaseMaterial({
 }: MoonPhaseMaterialProps) {
   const uniforms = useMemo(() => {
     return {
-      uLightDir: { value: new Vector3(lightDir[0], lightDir[1], lightDir[2]).normalize() },
-      uViewDir: { value: new Vector3(viewDir[0], viewDir[1], viewDir[2]).normalize() },
-      uLitColor: { value: litColor.clone() },
-      uDarkColor: { value: darkColor.clone() },
-      uAmbient: { value: ambient },
-      uOpacity: { value: opacity },
-      uTerminatorSoftness: { value: terminatorSoftness },
+      uLightDir: { value: new Vector3(1, 0, 0) },
+      uViewDir: { value: new Vector3(0, 1, 0) },
+      uLitColor: { value: new Color('#ffffff') },
+      uDarkColor: { value: new Color('#000000') },
+      uAmbient: { value: 0.14 },
+      uOpacity: { value: 1 },
+      uTerminatorSoftness: { value: 0.035 },
     }
-  }, [ambient, darkColor, lightDir, litColor, opacity, terminatorSoftness, viewDir])
+  }, [])
+  const uniformsRef = useRef(uniforms)
+
+  useEffect(() => {
+    uniformsRef.current.uLightDir.value
+      .set(lightDir[0], lightDir[1], lightDir[2])
+      .normalize()
+  }, [lightDir])
+
+  useEffect(() => {
+    uniformsRef.current.uViewDir.value
+      .set(viewDir[0], viewDir[1], viewDir[2])
+      .normalize()
+  }, [viewDir])
+
+  useEffect(() => {
+    uniformsRef.current.uLitColor.value.copy(litColor)
+  }, [litColor])
+
+  useEffect(() => {
+    uniformsRef.current.uDarkColor.value.copy(darkColor)
+  }, [darkColor])
+
+  useEffect(() => {
+    uniformsRef.current.uOpacity.value = opacity
+  }, [opacity])
+
+  useEffect(() => {
+    uniformsRef.current.uAmbient.value = ambient
+  }, [ambient])
+
+  useEffect(() => {
+    uniformsRef.current.uTerminatorSoftness.value = terminatorSoftness
+  }, [terminatorSoftness])
 
   return (
     <shaderMaterial
