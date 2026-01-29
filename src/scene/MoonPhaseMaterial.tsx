@@ -43,10 +43,11 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec3 litC = uLitColor;
     vec3 color = mix(dark, litC, mask);
 
-    // Add a subtle camera-space rim so the Moon stays readable near new moon.
+    // Add a subtle camera-space rim so the dark side still reads as a globe.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
     float rim = pow(1.0 - clamp(dot(nW, toCam), 0.0, 1.0), 2.0);
-    float alpha = uOpacity * max(mask, rim * 0.10);
+    color = mix(color, uLitColor, rim * 0.12);
+    float alpha = uOpacity * max(mask, rim * 0.18);
 
     gl_FragColor = vec4(color, alpha);
   }
