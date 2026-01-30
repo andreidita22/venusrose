@@ -13,11 +13,12 @@ import {
 import type { BodyState } from '../astro/ephemeris/types'
 import { astronomyEngineProvider } from '../astro/ephemeris/providerAstronomyEngine'
 import { formatSignedDegrees } from '../astro/format'
-import { eclipticToScenePosition } from '../astro/math/ecliptic'
+import { eclipticToScenePosition, eclipticUnitVector } from '../astro/math/ecliptic'
 import { radToDeg } from '../astro/math/angles'
 import { scaleRadiusAUToScene } from '../astro/math/scale'
 import { useAppStore } from '../state/store'
 import { SCENE_PALETTE } from '../theme/palette'
+import { MoonPhaseMaterial } from './MoonPhaseMaterial'
 
 const STEM_BASE_OPACITY = 0.85
 const UNFOCUSED_OPACITY = 0.22
@@ -42,6 +43,11 @@ const LABEL_OUTLINE_WIDTH = 0.02
 
 const LAT_LABEL_Y = -0.62
 const LAT_LABEL_FONT_SIZE = 0.18
+
+function rotateDirToWorld([x, y, z]: [number, number, number]): [number, number, number] {
+  // SceneRoot rotates the whole chart by -90° around X: (x, y, z) -> (x, z, -y)
+  return [x, z, -y]
+}
 
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x))
@@ -75,6 +81,22 @@ export function PlanetTokens() {
     setBodyStates(bodyStates)
   }, [bodyStates, setBodyStates])
 
+  const sunState = bodyStates.sun
+  const sunVecAu = useMemo((): [number, number, number] | null => {
+    if (!sunState) return null
+    const [ux, uy, uz] = eclipticUnitVector(sunState.lonRad, sunState.latRad)
+    return [ux * sunState.distAu, uy * sunState.distAu, uz * sunState.distAu]
+  }, [sunState])
+
+  const moonDarkColor = useMemo(() => {
+    if (theme !== 'dark') return new Color('#111827')
+    return new Color(palette.planeFill).lerp(new Color(palette.planeRim), 0.35)
+  }, [palette.planeFill, palette.planeRim, theme])
+  const moonRimColor = useMemo(() => {
+    if (theme === 'dark') return new Color('#f8fafc')
+    return new Color('#0f172a')
+  }, [theme])
+
   const stemOpacity = stemOpacityForTilt(tiltDeg)
   const cueOpacity = 1 - stemOpacity
 
@@ -96,7 +118,37 @@ export function PlanetTokens() {
         )
 
         const isSelected = selectedBody === body
-        const tokenColor = new Color(meta.color)
+        const accentColor = new Color(meta.color)
+        const tokenColor = accentColor
+        let emissiveIntensity = isSelected ? 0.65 : 0.35
+        let moonPhase:
+          | {
+              lightDir: [number, number, number]
+              viewDir: [number, number, number]
+              darkColor: Color
+              rimColor: Color
+            }
+          | null = null
+
+        if (body === 'moon' && sunVecAu) {
+          const [ux, uy, uz] = eclipticUnitVector(state.lonRad, state.latRad)
+          const mx = ux * state.distAu
+          const my = uy * state.distAu
+          const mz = uz * state.distAu
+          const lightLocal: [number, number, number] = [
+            sunVecAu[0] - mx,
+            sunVecAu[1] - my,
+            sunVecAu[2] - mz,
+          ]
+          const viewLocal: [number, number, number] = [-mx, -my, -mz]
+          moonPhase = {
+            lightDir: rotateDirToWorld(lightLocal),
+            viewDir: rotateDirToWorld(viewLocal),
+            darkColor: moonDarkColor,
+            rimColor: moonRimColor,
+          }
+          emissiveIntensity = isSelected ? 0.12 : 0.05
+        }
 
         const latDeg = radToDeg(state.latRad)
         const showLatCue = Math.abs(latDeg) >= LAT_CUE_MIN_ABS_DEG && cueOpacity > 0.001
@@ -109,6 +161,9 @@ export function PlanetTokens() {
             focusMode={focusMode}
             position={pos}
             tokenColor={tokenColor}
+            accentColor={accentColor}
+            emissiveIntensity={emissiveIntensity}
+            moonPhase={moonPhase}
             glyph={meta.glyph}
             label={meta.label}
             latLabel={`β ${formatSignedDegrees(latDeg, 1)}`}
@@ -131,6 +186,16 @@ type PlanetTokenProps = {
   focusMode: 'off' | 'fade' | 'solo'
   position: [number, number, number]
   tokenColor: Color
+  accentColor: Color
+  emissiveIntensity: number
+  moonPhase:
+    | {
+        lightDir: [number, number, number]
+        viewDir: [number, number, number]
+        darkColor: Color
+        rimColor: Color
+      }
+    | null
   glyph: string
   label: string
   latLabel: string
@@ -148,6 +213,9 @@ function PlanetToken({
   focusMode,
   position,
   tokenColor,
+  accentColor,
+  emissiveIntensity,
+  moonPhase,
   glyph,
   label,
   latLabel,
@@ -195,7 +263,7 @@ function PlanetToken({
             ]}
           />
           <meshBasicMaterial
-            color={tokenColor}
+            color={accentColor}
             transparent
             opacity={TOKEN_SELECTED_HALO_OPACITY}
             depthWrite={false}
@@ -205,6 +273,7 @@ function PlanetToken({
       <mesh
         position={position}
         scale={selected ? TOKEN_SELECTED_SCALE : 1}
+        renderOrder={4}
         onPointerOver={(e) => {
           e.stopPropagation()
           setHovered(true)
@@ -219,15 +288,26 @@ function PlanetToken({
         }}
       >
         <sphereGeometry args={[TOKEN_RADIUS, TOKEN_SEGMENTS, TOKEN_SEGMENTS]} />
-        <meshStandardMaterial
-          color={tokenColor}
-          emissive={tokenColor}
-          emissiveIntensity={selected ? 0.65 : 0.35}
-          roughness={0.45}
-          metalness={0.05}
-          transparent={focusOpacity < OPAQUE_THRESHOLD}
-          opacity={focusOpacity}
-        />
+        {moonPhase ? (
+          <MoonPhaseMaterial
+            lightDir={moonPhase.lightDir}
+            viewDir={moonPhase.viewDir}
+            litColor={accentColor}
+            darkColor={moonPhase.darkColor}
+            rimColor={moonPhase.rimColor}
+            opacity={focusOpacity}
+          />
+        ) : (
+          <meshStandardMaterial
+            color={tokenColor}
+            emissive={tokenColor}
+            emissiveIntensity={emissiveIntensity}
+            roughness={0.45}
+            metalness={0.05}
+            transparent={focusOpacity < OPAQUE_THRESHOLD}
+            opacity={focusOpacity}
+          />
+        )}
       </mesh>
 
       <Billboard position={[x, y, z + BILLBOARD_Z_OFFSET]} follow>
