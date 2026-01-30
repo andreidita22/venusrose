@@ -23,6 +23,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uViewDir;
   uniform vec3 uLitColor;
   uniform vec3 uDarkColor;
+  uniform vec3 uRimColor;
   uniform float uAmbient;
   uniform float uOpacity;
   uniform float uTerminatorSoftness;
@@ -46,7 +47,7 @@ const FRAGMENT_SHADER = /* glsl */ `
     // Add a subtle camera-space rim so the dark side still reads as a globe.
     vec3 toCam = normalize(cameraPosition - vWorldPos);
     float rim = pow(1.0 - clamp(dot(nW, toCam), 0.0, 1.0), 2.0);
-    color = mix(color, uLitColor, rim * 0.12);
+    color = mix(color, uRimColor, rim * 0.12);
     float alpha = uOpacity * max(mask, rim * 0.18);
 
     gl_FragColor = vec4(color, alpha);
@@ -58,6 +59,7 @@ export type MoonPhaseMaterialProps = {
   viewDir: [number, number, number]
   litColor: Color
   darkColor: Color
+  rimColor: Color
   opacity: number
   ambient?: number
   terminatorSoftness?: number
@@ -68,6 +70,7 @@ export function MoonPhaseMaterial({
   viewDir,
   litColor,
   darkColor,
+  rimColor,
   opacity,
   ambient = 0.14,
   terminatorSoftness = 0.035,
@@ -78,6 +81,7 @@ export function MoonPhaseMaterial({
       uViewDir: { value: new Vector3(0, 1, 0) },
       uLitColor: { value: new Color('#ffffff') },
       uDarkColor: { value: new Color('#000000') },
+      uRimColor: { value: new Color('#ffffff') },
       uAmbient: { value: 0.14 },
       uOpacity: { value: 1 },
       uTerminatorSoftness: { value: 0.035 },
@@ -104,6 +108,10 @@ export function MoonPhaseMaterial({
   useEffect(() => {
     uniformsRef.current.uDarkColor.value.copy(darkColor)
   }, [darkColor])
+
+  useEffect(() => {
+    uniformsRef.current.uRimColor.value.copy(rimColor)
+  }, [rimColor])
 
   useEffect(() => {
     uniformsRef.current.uOpacity.value = opacity

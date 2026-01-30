@@ -92,6 +92,10 @@ export function PlanetTokens() {
     if (theme !== 'dark') return new Color('#111827')
     return new Color(palette.planeFill).lerp(new Color(palette.planeRim), 0.35)
   }, [palette.planeFill, palette.planeRim, theme])
+  const moonRimColor = useMemo(() => {
+    if (theme === 'dark') return new Color('#f8fafc')
+    return new Color('#0f172a')
+  }, [theme])
 
   const stemOpacity = stemOpacityForTilt(tiltDeg)
   const cueOpacity = 1 - stemOpacity
@@ -122,6 +126,7 @@ export function PlanetTokens() {
               lightDir: [number, number, number]
               viewDir: [number, number, number]
               darkColor: Color
+              rimColor: Color
             }
           | null = null
 
@@ -140,6 +145,7 @@ export function PlanetTokens() {
             lightDir: rotateDirToWorld(lightLocal),
             viewDir: rotateDirToWorld(viewLocal),
             darkColor: moonDarkColor,
+            rimColor: moonRimColor,
           }
           emissiveIntensity = isSelected ? 0.12 : 0.05
         }
@@ -183,7 +189,12 @@ type PlanetTokenProps = {
   accentColor: Color
   emissiveIntensity: number
   moonPhase:
-    | { lightDir: [number, number, number]; viewDir: [number, number, number]; darkColor: Color }
+    | {
+        lightDir: [number, number, number]
+        viewDir: [number, number, number]
+        darkColor: Color
+        rimColor: Color
+      }
     | null
   glyph: string
   label: string
@@ -283,6 +294,7 @@ function PlanetToken({
             viewDir={moonPhase.viewDir}
             litColor={accentColor}
             darkColor={moonPhase.darkColor}
+            rimColor={moonPhase.rimColor}
             opacity={focusOpacity}
           />
         ) : (
